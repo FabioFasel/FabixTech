@@ -92,6 +92,8 @@ function renderDynamicSections(selectedCategory, allProducts) {
 
     container.innerHTML = sectionsHtml;
 
+    setTimeout(equalizeCardHeights, 50);
+
     if (typeof initSliders === 'function') initSliders();
     if (typeof checkSliderArrows === 'function') checkSliderArrows();
     if (typeof fetchAllStocks === 'function') fetchAllStocks();
@@ -149,4 +151,35 @@ function renderProductCards(products) {
     }).join('');
 }
 
+function equalizeCardHeights() {
+    const cards = document.querySelectorAll('.product-card');
+    if (!cards.length) return;
+
+    cards.forEach(card => card.style.height = 'auto');
+
+    const rowGroups = {};
+    cards.forEach(card => {
+        const top = Math.round(card.offsetTop / 10) * 10;
+        if (!rowGroups[top]) {
+            rowGroups[top] = [];
+        }
+        rowGroups[top].push(card);
+    });
+
+    Object.values(rowGroups).forEach(rowCards => {
+        let maxHeight = 0;
+        rowCards.forEach(card => {
+            const height = card.offsetHeight;
+            if (height > maxHeight) maxHeight = height;
+        });
+        rowCards.forEach(card => {
+            card.style.height = maxHeight + 'px';
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', renderShop);
+window.addEventListener('resize', () => {
+    clearTimeout(window.resizeTimer);
+    window.resizeTimer = setTimeout(equalizeCardHeights, 100);
+});

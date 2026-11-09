@@ -587,11 +587,10 @@ html, #cart-items-container {
 
 .product-grid {
     display: grid;
-    flex-wrap: wrap;
     grid-template-columns: repeat(auto-fit, 384px);
     gap: 48px;
     justify-content: center;
-    align-content: stretch;
+    align-items: stretch;
     max-width: 1440px;
     margin: 0 auto;
     width: 100%;
@@ -673,26 +672,32 @@ html, #cart-items-container {
 .product-footer {
     margin-top: auto;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
+    justify-content: space-between; 
+    align-items: center;
     padding-top: 18px;
     border-top: 1px solid var(--border-color);
     width: 100%;
 }
 
 .product-footer .price-block {
-    align-self: flex-start;
+    display: flex;
+    gap: 6px;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text-main);
+    align-self: center;
 }
 
 .product-footer .btn-buy {
-    align-self: flex-end;
+    align-self: center;
 }
 
 .color-slider-container {
     position: relative;
     width: 100%;
     padding: 6px 0;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
 
 .color-slider-track {
