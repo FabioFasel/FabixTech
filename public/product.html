@@ -184,8 +184,12 @@
             const variantsHtml = product.variants.map((v, index) => `
                 <button class="variant-btn ${index === 0 ? 'active' : ''}" 
                         data-variant-images="${v.images.join(', ')}" 
+                        data-price="${v.price}" 
                         data-id="${v.id}" 
-                        onclick="jumpToSlide(this, ${index}); updatePrice(this)">${v.name}</button>
+                        data-material="${v.material || '-'}"
+                        data-quality="${v.quality || '-'}"
+                        data-infill="${v.infill || '-'}"
+                        onclick="jumpToSlide(this, ${index}); updateVariantSpecs(this)">${v.name}</button>
             `).join('');
 
             const isGiftCard = (product.category || '').toUpperCase() === 'GESCHENKKARTE' || 
@@ -643,6 +647,22 @@
             }
         } catch (e) {
             alert("Verbindungsfehler zum Server.");
+        }
+    }
+
+    function updateVariantSpecs(btn) {
+
+        const material = btn.getAttribute('data-material');
+        const quality = btn.getAttribute('data-quality');
+        const infill = btn.getAttribute('data-infill');
+
+        const specsContainer = document.querySelector('.tech-specs');
+        if (specsContainer) {
+            specsContainer.innerHTML = `
+                <span class="spec"><b>Material:</b> ${material}</span>
+                <span class="spec"><b>Qualität:</b> ${quality}</span>
+                <span class="spec"><b>Infill:</b> ${infill}</span>
+            `;
         }
     }
     </script>

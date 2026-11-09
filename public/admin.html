@@ -337,26 +337,9 @@
                         </div>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Material</label>
-                            <input type="text" id="prod-material" placeholder="PLA">
-                        </div>
-                        <div class="form-group">
-                            <label>Kategorie</label>
-                            <input type="text" id="prod-category" required placeholder="Deko / Spielzeug">
-                        </div>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Qualität</label>
-                            <input type="text" id="prod-quality" placeholder="0.16mm">
-                        </div>
-                        <div class="form-group">
-                            <label>Infill</label>
-                            <input type="text" id="prod-infill" placeholder="20%">
-                        </div>
+                    <div class="form-group">
+                        <label>Kategorie</label>
+                        <input type="text" id="prod-category" required placeholder="Deko / Spielzeug">
                     </div>
 
                     <div class="form-group">
@@ -385,7 +368,7 @@
                     <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 20px;">
 
                     <button type="submit" style="background: #d40202; width: 100%; font-size: 16px;">
-                        <i class="fa-solid fa-plus"></i> Produkt in D1 speichern
+                        <i class="fa-solid fa-plus"></i> Produkt erstellen
                     </button>
                 </form>
             </div>
@@ -897,6 +880,20 @@
                     <input type="text" class="var-images" required placeholder="images/Gandalf-1.png, images/Gandalf-2.png">
                 </div>
             </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Material</label>
+                    <input type="text" class="var-material" placeholder="PLA">
+                </div>
+                <div class="form-group">
+                    <label>Qualität</label>
+                    <input type="text" class="var-quality" placeholder="0.16mm">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Infill</label>
+                <input type="text" class="var-infill" placeholder="20%">
+            </div>
         `;
         container.appendChild(div);
     }
@@ -915,11 +912,14 @@
             const name = box.querySelector('.var-name').value.trim();
             const price = parseFloat(box.querySelector('.var-price').value);
             const imagesRaw = box.querySelector('.var-images').value.trim();
+            const material = box.querySelector('.var-material').value.trim();
+            const quality = box.querySelector('.var-quality').value.trim();
+            const infill = box.querySelector('.var-infill').value.trim();
             
             const images = imagesRaw.split(',').map(img => img.trim()).filter(img => img.length > 0);
 
             if (id && name && !isNaN(price)) {
-                variants.push({ id, name, price, images });
+                variants.push({ id, name, price, images, material, quality, infill });
             }
         });
 

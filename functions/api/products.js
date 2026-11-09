@@ -56,6 +56,9 @@ export async function onRequestGet({ request, env }) {
                     name: v.name,
                     price: v.price,
                     stock: v.stock || 0,
+                    material: v.material || '',
+                    quality: v.quality || '',
+                    infill: v.infill || '',
                     images: v.images ? v.images.split(',').map(img => img.trim()) : []
                 }));
 
@@ -127,9 +130,15 @@ export async function onRequestPost({ request, env }) {
                 return new Response(JSON.stringify({ error: "orderedIds muss ein Array sein" }), { status: 400, headers: corsHeaders });
             }
 
-            const statements = data.orderedIds.map((baseId, index) => {
-                return env.DB.prepare("UPDATE products SET sort_order = ? WHERE base_id = ?")
-                    .bind(index + 1, baseId);
+            const statements = data.variants.map(v => {
+                const imageStr = Array.isArray(v.images) ? v.images.join(', ') : v.images;
+                return env.DB.prepare(`
+                    INSERT INTO product_variants (id, product_base_id, name, price, images, stock, material, quality, infill)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).bind(
+                    v.id, data.baseId, v.name, parseFloat(v.price), imageStr, parseInt(v.stock) || 0,
+                    v.material || '', v.quality || '', v.infill || ''
+                );
             });
 
             await env.DB.batch(statements);
