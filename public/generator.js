@@ -127,13 +127,12 @@ function renderProductCards(products) {
             </div>
             <div class="product-info">
                 <span class="prod-category">${prod.category}</span>
-                <h3><a href="product.html?id=${prod.baseId}" class="product-link">${prod.title}</a></h3>
+                <h3 style="margin-bottom: 12px;"><a href="product.html?id=${prod.baseId}" class="product-link">${prod.title}</a></h3>
                 <div class="docs"><a href="product.html?id=${prod.baseId}">Mehr Details &#8594;</a></div>
                 
-                <!-- Flexibler Platzhalter fängt den Höhenunterschied nur bei längeren Nachbarkarten ab -->
                 <div style="margin-top: auto;"></div>
 
-                <h4><strong>Varianten</strong></h4>
+                <h4 style="margin-top: 18px;"><strong>Varianten</strong></h4>
                 <div class="color-slider-container ${prod.variants.length <= 1 ? 'hide' : ''}">
                     <button type="button" class="nav-arrow left" onclick="scrollSlider(this, -1)">&#10094;</button>
                     <button type="button" class="nav-arrow right" onclick="scrollSlider(this, 1)">&#10095;</button>
