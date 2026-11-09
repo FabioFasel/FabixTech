@@ -140,7 +140,7 @@ function renderProductCards(products) {
                 </div>
 
                 <div class="product-footer">
-                    <div style="white-space: nowrap; display: inline-flex; align-items: baseline; gap: 4px;">
+                    <div class="price-block" style="white-space: nowrap;">
                         <span class="currency">CHF</span>
                         <span class="price">${defaultVariant.price.toFixed(2).replace('.', ',')}</span>
                     </div>
