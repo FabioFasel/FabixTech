@@ -611,7 +611,6 @@ html, #cart-items-container {
 }
 
 .product-card:hover {
-    transform: translateY(-6px);
     box-shadow: var(--shadow-md);
 }
 

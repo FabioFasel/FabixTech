@@ -436,5 +436,30 @@ export async function onRequestPost(context) {
         }
     }
 
+    if (action === 'delete_account') {
+        const cookieHeader = request.headers.get('Cookie') || '';
+        const sessionId = parseCookie(cookieHeader, 'session_id') || data.session_id;
+
+        if (!sessionId) {
+            return new Response(JSON.stringify({ status: 'error', message: 'Nicht angemeldet.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+        }
+
+        const user = await env.DB.prepare("SELECT * FROM users WHERE session_id = ?").bind(sessionId).first();
+        if (!user || (email && user.email !== email)) {
+            return new Response(JSON.stringify({ status: 'error', message: 'Ungültige Sitzung.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+        }
+
+        try {
+            await env.DB.prepare("DELETE FROM users WHERE email = ?").bind(user.email).run();
+            return new Response(JSON.stringify({ status: 'success', message: 'Konto erfolgreich gelöscht.' }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (err) {
+            return new Response(JSON.stringify({ status: 'error', message: 'Datenbank-Fehler: ' + err.message }), { 
+                status: 500, headers: { 'Content-Type': 'application/json' } 
+            });
+        }
+    }
+
     return new Response(JSON.stringify({ status: 'error', message: 'Ungültige Aktion.' }), { status: 400 });
 }
