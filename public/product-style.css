@@ -421,7 +421,7 @@ body, .product-card-detail-view, #product-reviews-section, .material-card, .navb
 .long-description {
     font-size: 15px;
     line-height: 1.6;
-    color: #555;
+    color: var(--text-main);
     margin-bottom: 25px;
 }
 

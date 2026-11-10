@@ -1,49 +1,16 @@
-FABIXTECH - LIZENZVEREINBARUNG & NUTZUNGSBEDINGUNGEN
+MIT License
+Copyright © 2026 FabixTech
 
-Copyright (c) 2026 FabixTech. Alle Rechte vorbehalten.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-Diese Lizenzvereinbarung regelt klar und verständlich die Nutzung von
-Quellcode, Designelementen, Medien und alle anderen Inhalte von FabixTech.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-1. QUELLCODE (HTML, CSS, JAVASCRIPT, WORKER-SKRIPTE)
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Der Quellcode dieser Website wird bereitgestellt, um Einblicke in die 
-technische Umsetzung zu gewähren und als Inspiration für eigene private
-Lern- oder Entwicklungsprojekte zu unterstützen.
 
-Erlaubt ist:
-- Das Ansehen, Herunterladen und Untersuchen des Quellcodes zu Lernzwecken.
-- Die Verwendung von Code Auschnitten in eigenen, nicht-kommerziellen Projekten,
-  wenn es einen Hinweis auf FabixTech im Projekt gibt.
+IMPORTANT NOTICE REGARDING MEDIA, LOGOS, AND BRANDING:
+The MIT License above applies ONLY to the source code (HTML, CSS, JavaScript, worker scripts) of this project. 
 
-Nicht erlaubt ist:
-- Das Kopieren und Ausführen des gesamten Codes.
-- Das Weiterverkaufen, Unterlizenzieren oder Vertreiben des Quellcodes als
-  eigenes Produkt.
-
-2. MEDIEN, LOGOS, BRANDING UND INHALTE
-
-Alle Medien auf dieser Plattform gehören FabixTech. Dazu zählen:
-
-- Das FabixTech-Logo sowie alle Varianten davon.
-- Das Design der Website und die Benutzeroberfläche.
-- Alle Produktfotos, Grafiken und der Minecraft-Avatar.
-- Alle Texte und Beschreibungen.
-
-Strikte Regeln für Medien:
-- Sämtliche Bilder, Logos und Texte dürfen ohne vorherige schriftliche 
-  Genehmigung von FabixTech weder kopiert, noch auf anderen Websites 
-  hochgeladen, geändert oder für eigene Zwecke verwendet werden.
-
-3. HAFTUNGSAUSSCHLUSS
-
-Der Quellcode und die Inhalte dieser Plattform werden wie sie sind
-bereitgestellt. FabixTech gibt keine Garantie für 
-die Vollständigkeit, Korrektheit oder Fehlerfreiheit des Codes. 
-
-FabixTech haftet nicht für Schäden, Datenverluste oder sonstige 
-Komplikationen, die durch die Verwendung, Anpassung oder Weiterverwendung 
-des Codes oder anderer Inhalte entstehen.
-
-Bei Fragen zur Lizenz oder sonstigen Fragen wende dich
-direkt über das Kontaktformular auf https://fabixtech.ch an mich.
+For all visual content, media, and brand assets:
+- The FabixTech logo, all graphics, product photos, 3D models, and the website design are strictly excluded from the MIT License.
+- These visual contents and media may not be copied, modified, or used on other platforms without written permission from FabixTech.
