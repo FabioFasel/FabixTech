@@ -270,7 +270,11 @@
             if (typeof fetchAllStocks === 'function') fetchAllStocks();
             
             loadProductReviews(productId);
-            updateVariantSpecs(btn)
+            
+            const firstVariantBtn = document.querySelector('.variant-btn');
+            if (firstVariantBtn) {
+                updateVariantSpecs(firstVariantBtn);
+            }
 
         } catch (err) {
             console.error("Fehler beim Laden des Produkts:", err);
@@ -497,7 +501,7 @@
                 <div style="background: var(--bg-dark); padding: 22px; border-radius: 12px; border: 1.2px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-                            <div style="width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; background-color: #ffffff; flex-shrink: 0;">
+                            <div style="width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; background-color: var(--bg-card); flex-shrink: 0;">
                                 ${avatarContent}
                             </div>
                             <div style="min-width: 0; flex: 1;">

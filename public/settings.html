@@ -486,7 +486,7 @@
         }
     </style>
 </head>
-<body class="preload">
+<body class="preload" data-no-theme-toggle>
     <nav class="navbar">
         <div class="nav-container">
             <a href="index" class="btn-back">&larr; Zurück zur Startseite</a>
@@ -894,9 +894,7 @@
             canvas.height = 150;
             const ctx = canvas.getContext('2d');
 
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            ctx.fillStyle = isDark ? '#0f172a' : '#f8fafc';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const img = cropperState.img;
             const renderW = cropperState.imgWidth * cropperState.scale;
@@ -912,7 +910,7 @@
 
             ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 150, 150);
 
-            const base64Image = canvas.toDataURL('image/jpeg', 0.85);
+            const base64Image = canvas.toDataURL('image/png');
 
             try {
                 const response = await fetch('/api/auth', {

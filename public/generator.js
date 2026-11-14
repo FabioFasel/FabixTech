@@ -115,7 +115,7 @@ function renderProductCards(products) {
         `).join('');
 
         return `
-        <div class="product-card" data-category="${prod.category}" style="flex: 1 1 350px; max-width: 380px; min-width: 350px;">
+        <div class="product-card" data-category="${prod.category}">
             <div class="slider-container">
                 <div class="slides">
                     <a href="product.html?id=${prod.baseId}" class="product-img-link">
@@ -125,21 +125,23 @@ function renderProductCards(products) {
                 <button class="arrow prev">&#10094;</button>
                 <button class="arrow next">&#10095;</button>
             </div>
-            <div class="product-info">
+            <div class="product-info" style="display: flex; flex-direction: column; flex-grow: 1;">
                 <span class="prod-category">${prod.category}</span>
                 <h3 style="margin-bottom: 12px;"><a href="product.html?id=${prod.baseId}" class="product-link">${prod.title}</a></h3>
-                <div class="docs"><a href="product.html?id=${prod.baseId}">Mehr Details &#8594;</a></div>
+                <div class="docs" style="margin-bottom: 12px;"><a href="product.html?id=${prod.baseId}">Mehr Details &#8594;</a></div>
                 
-                <h4 style="margin-top: 18px;"><strong>Varianten</strong></h4>
-                <div class="color-slider-container ${prod.variants.length <= 1 ? 'hide' : ''}">
-                    <button type="button" class="nav-arrow left" onclick="scrollSlider(this, -1)">&#10094;</button>
-                    <button type="button" class="nav-arrow right" onclick="scrollSlider(this, 1)">&#10095;</button>
-                    <div class="color-slider-track">
-                        ${variantsHtml}
+                <div class="variants-wrapper" style="margin-top: auto;">
+                    <h4 style="margin-top: 0; margin-bottom: 8px;"><strong>Varianten</strong></h4>
+                    <div class="color-slider-container ${prod.variants.length <= 1 ? 'hide' : ''}">
+                        <button type="button" class="nav-arrow left" onclick="scrollSlider(this, -1)">&#10094;</button>
+                        <button type="button" class="nav-arrow right" onclick="scrollSlider(this, 1)">&#10095;</button>
+                        <div class="color-slider-track">
+                            ${variantsHtml}
+                        </div>
                     </div>
                 </div>
 
-                <div class="product-footer">
+                <div class="product-footer" style="margin-top: 16px;">
                     <div class="price-block" style="white-space: nowrap;">
                         <span class="currency">CHF</span>
                         <span class="price">${defaultVariant.price.toFixed(2).replace('.', ',')}</span>
