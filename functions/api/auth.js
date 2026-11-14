@@ -1,5 +1,11 @@
 let blocklistCache = null;
 
+const SESSION_MAX_AGE = 2592000;
+
+function getSessionCookieHeader(sessionId) {
+    return `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`;
+}
+
 async function loadBlocklist(request, env) {
     if (blocklistCache) return blocklistCache;
 
@@ -149,7 +155,12 @@ export async function onRequestPost(context) {
         const enabledVal = data.enabled ? 1 : 0;
         await env.DB.prepare("UPDATE users SET two_factor_enabled = ? WHERE email = ?").bind(enabledVal, email).run();
 
-        return new Response(JSON.stringify({ status: 'success', message: '2FA Status aktualisiert.' }), { headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ status: 'success', message: '2FA Status aktualisiert.' }), { 
+            headers: { 
+                'Content-Type': 'application/json',
+                'Set-Cookie': getSessionCookieHeader(sessionId)
+            } 
+        });
     }
 
     if (action === 'update_avatar' || action === 'delete_avatar') {
@@ -186,7 +197,10 @@ export async function onRequestPost(context) {
                     .run();
                 
                 return new Response(JSON.stringify({ status: 'success', message: 'Profilbild gespeichert.' }), {
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Set-Cookie': getSessionCookieHeader(sessionId)
+                    }
                 });
             } catch (err) {
                 return new Response(JSON.stringify({ status: 'error', message: 'Datenbank-Fehler: ' + err.message }), { 
@@ -202,7 +216,10 @@ export async function onRequestPost(context) {
                     .run();
 
                 return new Response(JSON.stringify({ status: 'success', message: 'Profilbild gelöscht.' }), {
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Set-Cookie': getSessionCookieHeader(sessionId)
+                    }
                 });
             } catch (err) {
                 return new Response(JSON.stringify({ status: 'error', message: err.message }), { 
@@ -319,7 +336,7 @@ export async function onRequestPost(context) {
                 console.error("Fehler beim Speichern der Session-ID:", err);
             }
 
-            const cookieHeader = `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`;
+            const cookieHeader = getSessionCookieHeader(sessionId);
 
             return new Response(JSON.stringify({ 
                 status: 'success', 
@@ -365,7 +382,7 @@ export async function onRequestPost(context) {
         const sessionId = crypto.randomUUID();
         await env.DB.prepare("UPDATE users SET session_id = ? WHERE email = ?").bind(sessionId, user.email).run();
 
-        const cookieHeader = `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`;
+        const cookieHeader = getSessionCookieHeader(sessionId);
 
         return new Response(JSON.stringify({ 
             status: 'success', 

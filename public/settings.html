@@ -568,7 +568,7 @@
             <h3 class="modal-title"><i class="fa-solid fa-crop"></i> Profilbild zuschneiden</h3>
             <p class="modal-text">Verschiebe und zoome das Bild, um den perfekten Ausschnitt festzulegen.</p>
             
-            <div id="cropContainer" style="width: 250px; height: 250px; margin: 0 auto 16px; position: relative; overflow: hidden; border: 2px dashed var(--border-color); border-radius: 12px; background: #000; cursor: grab;">
+            <div id="cropContainer" style="width: 250px; height: 250px; margin: 0 auto 16px; position: relative; overflow: hidden; border: 2px dashed var(--border-color); border-radius: 12px; background: var(--bg-dark); cursor: grab;">
                 <img id="cropImage" src="" alt="Zuschneiden" style="position: absolute; user-select: none; max-width: none; pointer-events: none;">
             </div>
 
@@ -772,181 +772,185 @@
         }
 
         let cropperState = {
-        img: null,
-        scale: 1,
-        posX: 0,
-        posY: 0,
-        isDragging: false,
-        startX: 0,
-        startY: 0,
-        imgWidth: 0,
-        imgHeight: 0
-    };
-
-    document.getElementById('avatarInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const img = new Image();
-            img.onload = function() {
-                cropperState.img = img;
-                cropperState.scale = 1;
-                document.getElementById('zoomRange').value = 1;
-
-                const cropImgEl = document.getElementById('cropImage');
-                cropImgEl.src = img.src;
-
-                const containerSize = 250;
-                if (img.width > img.height) {
-                    cropperState.imgHeight = containerSize;
-                    cropperState.imgWidth = (img.width / img.height) * containerSize;
-                } else {
-                    cropperState.imgWidth = containerSize;
-                    cropperState.imgHeight = (img.height / img.width) * containerSize;
-                }
-
-                cropperState.posX = (containerSize - cropperState.imgWidth) / 2;
-                cropperState.posY = (containerSize - cropperState.imgHeight) / 2;
-
-                updateCropImageTransform();
-                document.getElementById('cropModal').classList.add('active');
-            };
-            img.src = evt.target.result;
+            img: null,
+            scale: 1,
+            posX: 0,
+            posY: 0,
+            isDragging: false,
+            startX: 0,
+            startY: 0,
+            imgWidth: 0,
+            imgHeight: 0
         };
-        reader.readAsDataURL(file);
-    });
 
-    function updateCropImageTransform() {
-        const cropImgEl = document.getElementById('cropImage');
-        if (!cropImgEl) return;
-        cropImgEl.style.width = cropperState.imgWidth + 'px';
-        cropImgEl.style.height = cropperState.imgHeight + 'px';
-        cropImgEl.style.transform = `translate(${cropperState.posX}px, ${cropperState.posY}px) scale(${cropperState.scale})`;
-        cropImgEl.style.transformOrigin = 'top left';
-    }
+        document.getElementById('avatarInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
 
-    const cropContainer = document.getElementById('cropContainer');
-    cropContainer.addEventListener('mousedown', startDrag);
-    window.addEventListener('mousemove', drag);
-    window.addEventListener('mouseup', endDrag);
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img = new Image();
+                img.onload = function() {
+                    cropperState.img = img;
+                    cropperState.scale = 1;
+                    document.getElementById('zoomRange').value = 1;
 
-    cropContainer.addEventListener('touchstart', (e) => {
-        if(e.touches.length === 1) startDrag(e.touches[0]);
-    });
-    window.addEventListener('touchmove', (e) => {
-        if(e.touches.length === 1) drag(e.touches[0]);
-    });
-    window.addEventListener('touchend', endDrag);
+                    const cropImgEl = document.getElementById('cropImage');
+                    cropImgEl.src = img.src;
 
-    function startDrag(e) {
-        cropperState.isDragging = true;
-        cropperState.startX = e.clientX - cropperState.posX;
-        cropperState.startY = e.clientY - cropperState.posY;
-    }
+                    const containerSize = 250;
+                    if (img.width > img.height) {
+                        cropperState.imgHeight = containerSize;
+                        cropperState.imgWidth = (img.width / img.height) * containerSize;
+                    } else {
+                        cropperState.imgWidth = containerSize;
+                        cropperState.imgHeight = (img.height / img.width) * containerSize;
+                    }
 
-    function drag(e) {
-        if (!cropperState.isDragging) return;
-        cropperState.posX = e.clientX - cropperState.startX;
-        cropperState.posY = e.clientY - cropperState.startY;
-        updateCropImageTransform();
-    }
+                    cropperState.posX = (containerSize - cropperState.imgWidth) / 2;
+                    cropperState.posY = (containerSize - cropperState.imgHeight) / 2;
 
-    function endDrag() {
-        cropperState.isDragging = false;
-    }
+                    updateCropImageTransform();
+                    document.getElementById('cropModal').classList.add('active');
+                };
+                img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
 
-    document.getElementById('zoomRange').addEventListener('input', function(e) {
-        cropperState.scale = parseFloat(this.value);
-        updateCropImageTransform();
-    });
-
-    function closeCropModal() {
-        document.getElementById('cropModal').classList.remove('active');
-        document.getElementById('avatarInput').value = '';
-    }
-
-    function uploadAvatar() {
-        const fileInput = document.getElementById('avatarInput');
-        if (!fileInput.files[0]) {
-            alert('Bitte wähle zuerst ein Bild aus.');
-            return;
-        }
-    }
-
-    async function applyCropAndUpload() {
-        const userStr = localStorage.getItem('user');
-        if (!userStr) {
-            alert('Bitte melde dich zuerst an.');
-            return;
-        }
-        
-        if (!cropperState.img) {
-            alert('Bitte wähle zuerst ein Bild aus.');
-            return;
+        function updateCropImageTransform() {
+            const cropImgEl = document.getElementById('cropImage');
+            if (!cropImgEl) return;
+            cropImgEl.style.width = cropperState.imgWidth + 'px';
+            cropImgEl.style.height = cropperState.imgHeight + 'px';
+            cropImgEl.style.transform = `translate(${cropperState.posX}px, ${cropperState.posY}px) scale(${cropperState.scale})`;
+            cropImgEl.style.transformOrigin = 'top left';
         }
 
-        const user = JSON.parse(userStr);
-        const containerSize = 250;
-        const canvas = document.createElement('canvas');
-        canvas.width = 150;
-        canvas.height = 150;
-        const ctx = canvas.getContext('2d');
+        const cropContainer = document.getElementById('cropContainer');
+        cropContainer.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('mouseup', endDrag);
 
-        const img = cropperState.img;
-        const renderW = cropperState.imgWidth * cropperState.scale;
-        const renderH = cropperState.imgHeight * cropperState.scale;
+        cropContainer.addEventListener('touchstart', (e) => {
+            if(e.touches.length === 1) startDrag(e.touches[0]);
+        });
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length === 1) drag(e.touches[0]);
+        });
+        window.addEventListener('touchend', endDrag);
 
-        const currentX = cropperState.posX;
-        const currentY = cropperState.posY;
+        function startDrag(e) {
+            cropperState.isDragging = true;
+            cropperState.startX = e.clientX - cropperState.posX;
+            cropperState.startY = e.clientY - cropperState.posY;
+        }
 
-        const srcX = (0 - currentX) * (img.width / renderW);
-        const srcY = (0 - currentY) * (img.height / renderH);
-        const srcW = containerSize * (img.width / renderW);
-        const srcH = containerSize * (img.height / renderH);
+        function drag(e) {
+            if (!cropperState.isDragging) return;
+            cropperState.posX = e.clientX - cropperState.startX;
+            cropperState.posY = e.clientY - cropperState.startY;
+            updateCropImageTransform();
+        }
 
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 150, 150);
+        function endDrag() {
+            cropperState.isDragging = false;
+        }
 
-        const base64Image = canvas.toDataURL('image/jpeg', 0.85);
+        document.getElementById('zoomRange').addEventListener('input', function(e) {
+            cropperState.scale = parseFloat(this.value);
+            updateCropImageTransform();
+        });
 
-        try {
-            const response = await fetch('/api/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'update_avatar',
-                    email: user.email,
-                    profile_picture: base64Image
-                })
-            });
+        function closeCropModal() {
+            document.getElementById('cropModal').classList.remove('active');
+            document.getElementById('avatarInput').value = '';
+        }
 
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const errorHTML = await response.text();
-                console.error('Serverantwort (kein JSON):', errorHTML);
-                alert('Serverfehler beim Speichern. Bitte prüfen.');
+        function uploadAvatar() {
+            const fileInput = document.getElementById('avatarInput');
+            if (!fileInput.files[0]) {
+                alert('Bitte wähle zuerst ein Bild aus.');
+                return;
+            }
+        }
+
+        async function applyCropAndUpload() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                alert('Bitte melde dich zuerst an.');
+                return;
+            }
+            
+            if (!cropperState.img) {
+                alert('Bitte wähle zuerst ein Bild aus.');
                 return;
             }
 
-            const result = await response.json();
+            const user = JSON.parse(userStr);
+            const containerSize = 250;
+            const canvas = document.createElement('canvas');
+            canvas.width = 150;
+            canvas.height = 150;
+            const ctx = canvas.getContext('2d');
 
-            if (result.status === 'success') {
-                user.profile_picture = base64Image;
-                localStorage.setItem('user', JSON.stringify(user));
-                alert('Profilbild erfolgreich zugeschnitten und gespeichert!');
-                closeCropModal();
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
-            } else {
-                alert('Fehler beim Speichern: ' + (result.message || 'Unbekannter Fehler'));
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            ctx.fillStyle = isDark ? '#0f172a' : '#f8fafc';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const img = cropperState.img;
+            const renderW = cropperState.imgWidth * cropperState.scale;
+            const renderH = cropperState.imgHeight * cropperState.scale;
+
+            const currentX = cropperState.posX;
+            const currentY = cropperState.posY;
+
+            const srcX = (0 - currentX) * (img.width / renderW);
+            const srcY = (0 - currentY) * (img.height / renderH);
+            const srcW = containerSize * (img.width / renderW);
+            const srcH = containerSize * (img.height / renderH);
+
+            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 150, 150);
+
+            const base64Image = canvas.toDataURL('image/jpeg', 0.85);
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update_avatar',
+                        email: user.email,
+                        profile_picture: base64Image
+                    })
+                });
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const errorHTML = await response.text();
+                    console.error('Serverantwort (kein JSON):', errorHTML);
+                    alert('Serverfehler beim Speichern. Bitte prüfen.');
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    user.profile_picture = base64Image;
+                    localStorage.setItem('user', JSON.stringify(user));
+                    alert('Profilbild erfolgreich zugeschnitten und gespeichert!');
+                    closeCropModal();
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    alert('Fehler beim Speichern: ' + (result.message || 'Unbekannter Fehler'));
+                }
+            } catch (err) {
+                console.error('Fehler:', err);
+                alert('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
             }
-        } catch (err) {
-            console.error('Fehler:', err);
-            alert('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
         }
-    }
     </script>
 </body>
 </html>

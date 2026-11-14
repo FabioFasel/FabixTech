@@ -1,3 +1,41 @@
+async function verifyAdmin(request, env) {
+    const cookieHeader = request.headers.get('Cookie') || '';
+    const authHeader = request.headers.get('Authorization') || '';
+
+    let sessionId = null;
+    const match = cookieHeader.match(/(?:^|; )session_id=([^;]*)/);
+    if (match) {
+        sessionId = decodeURIComponent(match[1]);
+    } else if (authHeader.startsWith('Bearer ')) {
+        sessionId = authHeader.substring(7).trim();
+    }
+
+    if (!sessionId) return false;
+
+    try {
+        const user = await env.DB.prepare(
+            "SELECT is_admin FROM users WHERE session_id = ?"
+        ).bind(sessionId).first();
+
+        return user && (user.is_admin === 1 || user.is_admin === true);
+    } catch (e) {
+        return false;
+    }
+}
+
+async function getSessionUser(request, env) {
+    const cookieHeader = request.headers.get('Cookie') || '';
+    const match = cookieHeader.match(/(?:^|; )session_id=([^;]*)/);
+    if (!match) return null;
+    const sessionId = decodeURIComponent(match[1]);
+    try {
+        const user = await env.DB.prepare("SELECT email, is_admin FROM users WHERE session_id = ?").bind(sessionId).first();
+        return user || null;
+    } catch (e) {
+        return null;
+    }
+}
+
 export async function onRequestGet(context) {
     const { request, env } = context;
     const url = new URL(request.url);
@@ -55,11 +93,14 @@ export async function onRequestPost(context) {
         const data = await request.json();
         
         if (data.action === 'admin_reply') {
-            const { reviewId, admin_reply, user_email } = data;
+            const { reviewId, admin_reply } = data;
             
-            const user = await env.DB.prepare(`SELECT is_admin FROM users WHERE email = ?`).bind(user_email).first();
-            if (!user || !user.is_admin) {
-                return new Response(JSON.stringify({ error: "Keine Administrator-Rechte." }), { status: 403 });
+            const isAdmin = await verifyAdmin(request, env);
+            if (!isAdmin) {
+                return new Response(JSON.stringify({ error: "Keine Administrator-Rechte." }), { 
+                    status: 403, 
+                    headers: { 'Content-Type': 'application/json' } 
+                });
             }
 
             await env.DB.prepare(`UPDATE reviews SET admin_reply = ? WHERE id = ?`).bind(admin_reply, reviewId).run();
@@ -67,16 +108,79 @@ export async function onRequestPost(context) {
         }
 
         if (data.action === 'vote') {
-            const { reviewId, type, delta } = data;
-            const col = type === 'yes' ? 'helpful_yes' : 'helpful_no';
-            
-            await env.DB.prepare(`
-                UPDATE reviews 
-                SET ${col} = MAX(0, ${col} + ?) 
-                WHERE id = ?
-            `).bind(delta, reviewId).run();
+            const { reviewId, type } = data;
+            if (type !== 'yes' && type !== 'no') {
+                return new Response(JSON.stringify({ error: "Ungültiger Typ" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+            }
 
-            return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
+            const user = await getSessionUser(request, env);
+            if (!user) {
+                return new Response(JSON.stringify({ error: "Bitte melde dich an, um abzustimmen." }), { 
+                    status: 401, 
+                    headers: { 'Content-Type': 'application/json' } 
+                });
+            }
+
+            await env.DB.prepare(`
+                CREATE TABLE IF NOT EXISTS review_votes (
+                    review_id INTEGER,
+                    user_email TEXT,
+                    vote_type TEXT,
+                    PRIMARY KEY (review_id, user_email)
+                )
+            `).run();
+
+            const existingVote = await env.DB.prepare(
+                `SELECT vote_type FROM review_votes WHERE review_id = ? AND user_email = ?`
+            ).bind(reviewId, user.email).first();
+
+            let deltaYes = 0;
+            let deltaNo = 0;
+
+            if (existingVote) {
+                if (existingVote.vote_type === type) {
+                    await env.DB.prepare(
+                        `DELETE FROM review_votes WHERE review_id = ? AND user_email = ?`
+                    ).bind(reviewId, user.email).run();
+
+                    if (type === 'yes') deltaYes = -1;
+                    if (type === 'no') deltaNo = -1;
+                } else {
+                    await env.DB.prepare(
+                        `UPDATE review_votes SET vote_type = ? WHERE review_id = ? AND user_email = ?`
+                    ).bind(type, reviewId, user.email).run();
+
+                    if (type === 'yes') { deltaYes = 1; deltaNo = -1; }
+                    if (type === 'no') { deltaYes = -1; deltaNo = 1; }
+                }
+            } else {
+                await env.DB.prepare(
+                    `INSERT INTO review_votes (review_id, user_email, vote_type) VALUES (?, ?, ?)`
+                ).bind(reviewId, user.email, type).run();
+
+                if (type === 'yes') deltaYes = 1;
+                if (type === 'no') deltaNo = 1;
+            }
+
+            if (deltaYes !== 0 || deltaNo !== 0) {
+                await env.DB.prepare(`
+                    UPDATE reviews 
+                    SET helpful_yes = MAX(0, helpful_yes + ?),
+                        helpful_no = MAX(0, helpful_no + ?)
+                    WHERE id = ?
+                `).bind(deltaYes, deltaNo, reviewId).run();
+            }
+
+            const updated = await env.DB.prepare(
+                `SELECT helpful_yes, helpful_no FROM reviews WHERE id = ?`
+            ).bind(reviewId).first();
+
+            return new Response(JSON.stringify({ 
+                success: true, 
+                helpful_yes: updated ? updated.helpful_yes : 0,
+                helpful_no: updated ? updated.helpful_no : 0,
+                userVote: existingVote && existingVote.vote_type === type ? null : type
+            }), { headers: { 'Content-Type': 'application/json' } });
         }
 
         const { productId, user_email, customer_name, rating, title, comment, pros, cons } = data;

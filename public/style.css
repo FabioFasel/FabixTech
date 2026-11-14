@@ -708,7 +708,7 @@ html, #cart-items-container {
     gap: 10px;
     overflow-x: auto;
     white-space: nowrap;
-    padding: 0 36px;
+    padding: 0 0;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }

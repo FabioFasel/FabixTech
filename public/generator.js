@@ -130,8 +130,6 @@ function renderProductCards(products) {
                 <h3 style="margin-bottom: 12px;"><a href="product.html?id=${prod.baseId}" class="product-link">${prod.title}</a></h3>
                 <div class="docs"><a href="product.html?id=${prod.baseId}">Mehr Details &#8594;</a></div>
                 
-                <div style="margin-top: auto;"></div>
-
                 <h4 style="margin-top: 18px;"><strong>Varianten</strong></h4>
                 <div class="color-slider-container ${prod.variants.length <= 1 ? 'hide' : ''}">
                     <button type="button" class="nav-arrow left" onclick="scrollSlider(this, -1)">&#10094;</button>

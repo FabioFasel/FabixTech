@@ -270,6 +270,7 @@
             if (typeof fetchAllStocks === 'function') fetchAllStocks();
             
             loadProductReviews(productId);
+            updateVariantSpecs(btn)
 
         } catch (err) {
             console.error("Fehler beim Laden des Produkts:", err);
@@ -366,22 +367,22 @@
 
             summaryContainer.innerHTML = `
                 <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap; background: var(--bg-dark); padding: 25px; border-radius: 12px; border: 1.2px solid var(--border-color);">
-                    <div style="text-align: center; min-width: 140px;">
+                    <div style="text-align: center; min-width: 140px; flex-shrink: 0;">
                         <span style="font-size: 44px; font-weight: 900; line-height: 1; color: var(--light-color);">${avg.toFixed(1)}</span>
                         <div style="color: #f59e0b; font-size: 18px; margin: 6px 0;">${starsHtml}</div>
                         <span style="color: var(--text-muted); font-size: 13px; font-weight: 500;">${total} Käufer-Reviews</span>
                     </div>
-                    <div style="flex-grow: 1; min-width: 260px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="flex-grow: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px;">
                         ${[5,4,3,2,1].map(stars => {
                             const count = breakdown[stars] || 0;
                             const percent = total > 0 ? Math.round((count / total) * 100) : 0;
                             return `
                                 <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
-                                    <span style="width: 25px; font-weight: 600;">${stars} ★</span>
-                                    <div style="flex-grow: 1; background: var(--bg-card); height: 8px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
+                                    <span style="width: 42px; flex-shrink: 0; font-weight: 600; white-space: nowrap;">${stars} ★</span>
+                                    <div style="flex-grow: 1; min-width: 0; background: var(--bg-card); height: 8px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
                                         <div style="width: ${percent}%; background: var(--light-color); height: 100%; border-radius: 4px;"></div>
                                     </div>
-                                    <span style="width: 35px; color: var(--text-muted); text-align: right; font-size: 12px;">${percent}%</span>
+                                    <span style="width: 38px; flex-shrink: 0; color: var(--text-muted); text-align: right; font-size: 12px;">${percent}%</span>
                                 </div>
                             `;
                         }).join('')}
@@ -494,23 +495,23 @@
 
             return `
                 <div style="background: var(--bg-dark); padding: 22px; border-radius: 12px; border: 1.2px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                             <div style="width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; background-color: #ffffff; flex-shrink: 0;">
                                 ${avatarContent}
                             </div>
-                            <div>
-                                <strong style="font-size: 15px; display: block;">${r.customer_name}</strong>
-                                <span style="font-size: 11.5px; color: #16a34a; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Hat das Produkt gekauft</span>
+                            <div style="min-width: 0; flex: 1;">
+                                <strong style="font-size: 15px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.customer_name}</strong>
+                                <span style="font-size: 11.5px; color: #16a34a; font-weight: 600; white-space: nowrap; display: inline-block;"><i class="fa-solid fa-circle-check"></i> Hat das Produkt gekauft</span>
                             </div>
                         </div>
-                        <div style="color: #f59e0b; font-size: 15px;">${rStars}</div>
+                        <div style="color: #f59e0b; font-size: 15px; flex-shrink: 0; white-space: nowrap;">${rStars}</div>
                     </div>
                     <h5 style="font-size: 16px; font-weight: 700; margin: 0 0 6px 0; color: var(--text-main);">${r.title}</h5>
-                    <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.6;">${r.comment || ''}</p>
+                    <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.6; word-break: break-word;">${r.comment || ''}</p>
                     ${prosHtml}
                     ${consHtml}
-                    
+
                     <div style="margin-top: 15px; display: flex; align-items: center; gap: 15px; font-size: 13px; color: var(--text-muted);">
                         <span>War diese Bewertung hilfreich?</span>
                         <button onclick="voteHelpful(${r.id}, 'yes')" style="${yesBtnStyle} padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12.5px; transition: all 0.2s;">
@@ -528,45 +529,28 @@
     }
 
     async function voteHelpful(reviewId, type) {
-        const storageKey = 'fabixtech_vote_' + reviewId;
-        const currentVote = localStorage.getItem(storageKey);
-
-        let deltaYes = 0;
-        let deltaNo = 0;
-
-        if (currentVote === type) {
-            if (type === 'yes') deltaYes = -1;
-            if (type === 'no') deltaNo = -1;
-            localStorage.removeItem(storageKey);
-        } else {
-            if (currentVote) {
-                if (currentVote === 'yes') deltaYes = -1;
-                if (currentVote === 'no') deltaNo = -1;
-            }
-            if (type === 'yes') deltaYes = 1;
-            if (type === 'no') deltaNo = 1;
-            localStorage.setItem(storageKey, type);
-        }
-
         try {
-            if (deltaYes !== 0) {
-                await fetch('/api/reviews', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'vote', reviewId, type: 'yes', delta: deltaYes })
-                });
+            const res = await fetch('/api/reviews', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'vote', reviewId, type })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                if (data.userVote) {
+                    localStorage.setItem('fabixtech_vote_' + reviewId, data.userVote);
+                } else {
+                    localStorage.removeItem('fabixtech_vote_' + reviewId);
+                }
+                const urlParams = new URLSearchParams(window.location.search);
+                loadProductReviews(urlParams.get('id'));
+            } else {
+                alert(data.error || "Fehler beim Abstimmen.");
             }
-            if (deltaNo !== 0) {
-                await fetch('/api/reviews', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'vote', reviewId, type: 'no', delta: deltaNo })
-                });
-            }
-            const urlParams = new URLSearchParams(window.location.search);
-            loadProductReviews(urlParams.get('id'));
         } catch (e) {
             console.error("Fehler beim Abstimmen", e);
+            alert("Verbindungsfehler.");
         }
     }
 
@@ -577,7 +561,6 @@
 
     async function submitAdminReply(reviewId) {
         const input = document.getElementById(`admin-reply-input-${reviewId}`);
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
         if (!input || !input.value.trim()) return;
 
         try {
@@ -587,8 +570,7 @@
                 body: JSON.stringify({
                     action: 'admin_reply',
                     reviewId: reviewId,
-                    admin_reply: input.value.trim(),
-                    user_email: user.email
+                    admin_reply: input.value.trim()
                 })
             });
 

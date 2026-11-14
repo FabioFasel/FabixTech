@@ -1,3 +1,26 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const excludedPages = ['checkout', 'admin', 'settings', 'orders',];
+    const currentPath = window.location.pathname.toLowerCase();
+
+    if (excludedPages.some(page => currentPath.includes(page)) || document.body.hasAttribute('data-no-theme-toggle')) {
+        return;
+    }
+
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    let toggleBtn = document.getElementById('floating-theme-toggle');
+    if (!toggleBtn) {
+        toggleBtn = document.createElement('button');
+        toggleBtn.id = 'floating-theme-toggle';
+        toggleBtn.className = 'theme-toggle-btn';
+        toggleBtn.setAttribute('aria-label', 'Dark Mode umschalten');
+        document.body.appendChild(toggleBtn);
+        
+        toggleBtn.addEventListener('click', toggleDarkMode);
+    }
+
+    updateAllThemeIcons(savedTheme);
+});
+
 function updateAllThemeIcons(theme) {
     const buttons = document.querySelectorAll('#floating-theme-toggle, .theme-toggle-btn, .theme-toggle');
     
