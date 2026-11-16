@@ -192,11 +192,18 @@ export async function onRequestPost(context) {
             });
         }
 
+        const product = await env.DB.prepare(
+            "SELECT title FROM products WHERE base_id = ?"
+        ).bind(productId).first();
+
+        const productTitle = product ? product.title : productId;
+
         const hasBought = await env.DB.prepare(`
             SELECT oi.id FROM order_items oi
             JOIN orders o ON oi.order_id = o.id
-            WHERE o.customer_email = ? AND (oi.product_name LIKE ? OR oi.order_id = ?)
-        `).bind(user_email, `%${productId}%`, productId).first();
+            WHERE LOWER(o.customer_email) = LOWER(?) 
+              AND (LOWER(oi.product_name) LIKE LOWER(?) OR LOWER(oi.product_name) LIKE LOWER(?))
+        `).bind(user_email.trim(), `%${productTitle}%`, `%${productId}%`).first();
 
         if (!hasBought) {
             return new Response(JSON.stringify({ error: "Du kannst dieses Produkt nur bewerten, wenn du es gekauft hast." }), {

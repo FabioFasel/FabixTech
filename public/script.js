@@ -10,6 +10,66 @@ applySavedTheme();
 window.addEventListener('pageshow', applySavedTheme);
 window.addEventListener('storage', applySavedTheme);
 
+function forceAutoLogout() {
+    localStorage.removeItem('user');
+    localStorage.removeItem('session_id');
+    localStorage.removeItem('is_admin');
+
+    document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+    if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login?expired=1';
+    }
+}
+
+const originalFetch = window.fetch;
+window.fetch = async function (...args) {
+    const response = await originalFetch.apply(this, args);
+    const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+
+    if (response.status === 401 && url.includes('/api/') && !url.includes('/api/auth')) {
+        if (localStorage.getItem('user') || localStorage.getItem('session_id')) {
+            forceAutoLogout();
+        }
+    }
+    return response;
+};
+
+async function checkSessionValidity() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return;
+
+    let user;
+    try {
+        user = JSON.parse(userStr);
+    } catch (e) {
+        forceAutoLogout();
+        return;
+    }
+
+    const sessionId = user.session_id || localStorage.getItem('session_id');
+    if (!sessionId) {
+        forceAutoLogout();
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/verify-session', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${sessionId}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (res.status === 401) {
+            forceAutoLogout();
+        }
+    } catch (err) {
+        console.warn("Session-Check vorübergehend nicht möglich:", err);
+    }
+}
+
 const stockPromise = fetch(`/api/get-all-stocks?t=${Date.now()}`)
     .then(res => res.ok ? res.json() : [])
     .catch(err => {
@@ -18,6 +78,7 @@ const stockPromise = fetch(`/api/get-all-stocks?t=${Date.now()}`)
     });
 
 document.addEventListener('DOMContentLoaded', () => {
+    checkSessionValidity();
     fetchAllStocks();
 });
 
@@ -156,6 +217,7 @@ function logoutUser() {
     localStorage.removeItem('user');
     localStorage.removeItem('is_admin');
     localStorage.removeItem('session_id');
+    document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     window.location.href = '/';
 }
 
@@ -281,4 +343,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('pageshow', () => {
     fetchAllStocks();
+    checkSessionValidity();
 });

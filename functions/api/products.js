@@ -130,15 +130,10 @@ export async function onRequestPost({ request, env }) {
                 return new Response(JSON.stringify({ error: "orderedIds muss ein Array sein" }), { status: 400, headers: corsHeaders });
             }
 
-            const statements = data.variants.map(v => {
-                const imageStr = Array.isArray(v.images) ? v.images.join(', ') : v.images;
-                return env.DB.prepare(`
-                    INSERT INTO product_variants (id, product_base_id, name, price, images, stock, material, quality, infill)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `).bind(
-                    v.id, data.baseId, v.name, parseFloat(v.price), imageStr, parseInt(v.stock) || 0,
-                    v.material || '', v.quality || '', v.infill || ''
-                );
+            const statements = data.orderedIds.map((baseId, index) => {
+                return env.DB.prepare(
+                    "UPDATE products SET sort_order = ? WHERE base_id = ?"
+                ).bind(index, baseId);
             });
 
             await env.DB.batch(statements);
@@ -164,13 +159,15 @@ export async function onRequestPost({ request, env }) {
             const statements = data.variants.map(v => {
                 const imageStr = Array.isArray(v.images) ? v.images.join(', ') : v.images;
                 return env.DB.prepare(`
-                    INSERT INTO product_variants (id, product_base_id, name, price, images, stock)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                `).bind(v.id, data.baseId, v.name, parseFloat(v.price), imageStr, parseInt(v.stock) || 0);
+                    INSERT INTO product_variants (id, product_base_id, name, price, images, stock, material, quality, infill)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).bind(
+                    v.id, data.baseId, v.name, parseFloat(v.price), imageStr, parseInt(v.stock) || 0,
+                    v.material || '', v.quality || '', v.infill || ''
+                );
             });
             await env.DB.batch(statements);
         }
-
         return new Response(JSON.stringify({ success: true, message: "Produkt erfolgreich gespeichert!" }), { status: 201, headers: corsHeaders });
     } catch (err) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });

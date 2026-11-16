@@ -1,8 +1,17 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const excludedPages = ['checkout', 'admin', 'settings', 'orders',];
+function isThemeToggleExcluded() {
+    const excludedPages = ['checkout', 'admin', 'settings', 'orders'];
     const currentPath = window.location.pathname.toLowerCase();
 
-    if (excludedPages.some(page => currentPath.includes(page)) || document.body.hasAttribute('data-no-theme-toggle')) {
+    return (
+        excludedPages.some(page => currentPath.includes(page)) ||
+        (document.body && document.body.hasAttribute('data-no-theme-toggle'))
+    );
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (isThemeToggleExcluded()) {
+        const existingBtn = document.getElementById('floating-theme-toggle');
+        if (existingBtn) existingBtn.remove();
         return;
     }
 
@@ -45,24 +54,8 @@ function toggleDarkMode() {
 
 window.toggleDarkMode = toggleDarkMode;
 
-document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-
-    let toggleBtn = document.getElementById('floating-theme-toggle');
-    if (!toggleBtn) {
-        toggleBtn = document.createElement('button');
-        toggleBtn.id = 'floating-theme-toggle';
-        toggleBtn.className = 'theme-toggle-btn';
-        toggleBtn.setAttribute('aria-label', 'Dark Mode umschalten');
-        document.body.appendChild(toggleBtn);
-        
-        toggleBtn.addEventListener('click', toggleDarkMode);
-    }
-
-    updateAllThemeIcons(savedTheme);
-});
-
 window.addEventListener('pageshow', () => {
+    if (isThemeToggleExcluded()) return;
     const savedTheme = localStorage.getItem('theme') || 'light';
     updateAllThemeIcons(savedTheme);
 });

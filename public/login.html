@@ -365,12 +365,21 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        const theme = localStorage.getItem('theme') || 'light';
-        const widget = document.getElementById('turnstile-widget');
-        if (widget) {
-            widget.setAttribute('data-theme', theme);
+    const theme = localStorage.getItem('theme') || 'light';
+    const widget = document.getElementById('turnstile-widget');
+    if (widget) {
+        widget.setAttribute('data-theme', theme);
+    }
+
+    if (new URLSearchParams(window.location.search).get('expired') === '1') {
+        if (typeof showAlert === 'function') {
+            showAlert("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.", "Sitzung abgelaufen");
+        } else {
+            alert("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
         }
-    });
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+});
     </script>
 </body>
 </html>
