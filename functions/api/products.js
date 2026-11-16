@@ -80,9 +80,9 @@ export async function onRequestGet({ request, env }) {
                 creator: p.creator,
                 link: p.link,
                 creatorLinks: creatorLinks,
-                material: p.material,
-                quality: p.quality,
-                infill: p.infill,
+                material: productVariants[0]?.material || '',
+                quality: productVariants[0]?.quality || '',
+                infill: productVariants[0]?.infill || '',
                 longDescription: p.long_description,
                 isCustom: p.is_custom === 1 || p.is_custom === true,
                 sortOrder: p.sort_order || 0,
@@ -147,12 +147,11 @@ export async function onRequestPost({ request, env }) {
         const isCustomVal = data.isCustom ? 1 : 0;
 
         await env.DB.prepare(`
-            INSERT INTO products (base_id, title, category, creator, link, creator_links, material, quality, infill, long_description, is_custom, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 999)
+            INSERT INTO products (base_id, title, category, creator, link, creator_links, long_description, is_custom, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 999)
         `).bind(
             data.baseId, data.title, data.category, data.creator || '', data.link || '', creatorLinksStr,
-            data.material || '', data.quality || '', data.infill || '', data.longDescription || '', 
-            isCustomVal
+            data.longDescription || '', isCustomVal
         ).run();
 
         if (data.variants && data.variants.length > 0) {
@@ -242,13 +241,11 @@ export async function onRequestPut({ request, env }) {
 
         await env.DB.prepare(`
             UPDATE products 
-            SET title = ?, category = ?, creator = ?, link = ?, creator_links = ?, material = ?, quality = ?, infill = ?, long_description = ?, is_custom = ?
+            SET title = ?, category = ?, creator = ?, link = ?, creator_links = ?, long_description = ?, is_custom = ?
             WHERE base_id = ?
         `).bind(
             data.title, data.category, data.creator || '', data.link || '', creatorLinksStr,
-            data.material || '', data.quality || '', data.infill || '', data.longDescription || '', 
-            isCustomVal,
-            data.baseId
+            data.longDescription || '', isCustomVal, data.baseId
         ).run();
 
         await env.DB.prepare("DELETE FROM product_variants WHERE product_base_id = ?").bind(data.baseId).run();
@@ -257,9 +254,12 @@ export async function onRequestPut({ request, env }) {
             const statements = data.variants.map(v => {
                 const imageStr = Array.isArray(v.images) ? v.images.join(', ') : v.images;
                 return env.DB.prepare(`
-                    INSERT INTO product_variants (id, product_base_id, name, price, images, stock)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                `).bind(v.id, data.baseId, v.name, parseFloat(v.price), imageStr, parseInt(v.stock) || 0);
+                    INSERT INTO product_variants (id, product_base_id, name, price, images, stock, material, quality, infill)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).bind(
+                    v.id, data.baseId, v.name, parseFloat(v.price), imageStr, parseInt(v.stock) || 0,
+                    v.material || '', v.quality || '', v.infill || ''
+                );
             });
             await env.DB.batch(statements);
         }
