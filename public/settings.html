@@ -569,7 +569,7 @@
             <p class="modal-text">Verschiebe und zoome das Bild, um den perfekten Ausschnitt festzulegen.</p>
             
             <div id="cropContainer" style="width: 250px; height: 250px; margin: 0 auto 16px; position: relative; overflow: hidden; border: 2px dashed var(--border-color); border-radius: 12px; background: var(--bg-dark); cursor: grab;">
-                <img id="cropImage" src="" alt="Zuschneiden" style="position: absolute; user-select: none; max-width: none; pointer-events: none;">
+                <img id="cropImage" src="" alt="Zuschneiden" style="position: absolute; top: 0; left: 0; user-select: none; max-width: none; pointer-events: none;">
             </div>
 
             <div style="margin-bottom: 20px;">
@@ -858,7 +858,14 @@
         }
 
         document.getElementById('zoomRange').addEventListener('input', function(e) {
-            cropperState.scale = parseFloat(this.value);
+            const oldScale = cropperState.scale;
+            const newScale = parseFloat(this.value);
+            const containerCenter = 125; // Hälfte von 250px
+
+            cropperState.posX = containerCenter - ((containerCenter - cropperState.posX) / oldScale) * newScale;
+            cropperState.posY = containerCenter - ((containerCenter - cropperState.posY) / oldScale) * newScale;
+            cropperState.scale = newScale;
+
             updateCropImageTransform();
         });
 

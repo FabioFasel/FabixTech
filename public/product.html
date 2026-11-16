@@ -533,10 +533,15 @@
     }
 
     async function voteHelpful(reviewId, type) {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const token = user.session_id || localStorage.getItem('session_id') || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         try {
             const res = await fetch('/api/reviews', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ action: 'vote', reviewId, type })
             });
 
@@ -567,10 +572,15 @@
         const input = document.getElementById(`admin-reply-input-${reviewId}`);
         if (!input || !input.value.trim()) return;
 
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const token = user.session_id || localStorage.getItem('session_id') || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         try {
             const res = await fetch('/api/reviews', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     action: 'admin_reply',
                     reviewId: reviewId,
@@ -616,10 +626,14 @@
             cons: cons
         };
 
+        const token = user.session_id || localStorage.getItem('session_id') || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         try {
             const res = await fetch('/api/reviews', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ action: 'add', ...payload })
             });
 

@@ -1,15 +1,15 @@
-async function verifyAdmin(request, env) {
+function extractSessionId(request) {
     const cookieHeader = request.headers.get('Cookie') || '';
     const authHeader = request.headers.get('Authorization') || '';
 
-    let sessionId = null;
     const match = cookieHeader.match(/(?:^|; )session_id=([^;]*)/);
-    if (match) {
-        sessionId = decodeURIComponent(match[1]);
-    } else if (authHeader.startsWith('Bearer ')) {
-        sessionId = authHeader.substring(7).trim();
-    }
+    if (match) return decodeURIComponent(match[1]);
+    if (authHeader.startsWith('Bearer ')) return authHeader.substring(7).trim();
+    return null;
+}
 
+async function verifyAdmin(request, env) {
+    const sessionId = extractSessionId(request);
     if (!sessionId) return false;
 
     try {
@@ -24,12 +24,13 @@ async function verifyAdmin(request, env) {
 }
 
 async function getSessionUser(request, env) {
-    const cookieHeader = request.headers.get('Cookie') || '';
-    const match = cookieHeader.match(/(?:^|; )session_id=([^;]*)/);
-    if (!match) return null;
-    const sessionId = decodeURIComponent(match[1]);
+    const sessionId = extractSessionId(request);
+    if (!sessionId) return null;
+
     try {
-        const user = await env.DB.prepare("SELECT email, is_admin FROM users WHERE session_id = ?").bind(sessionId).first();
+        const user = await env.DB.prepare(
+            "SELECT email, name, is_admin FROM users WHERE session_id = ?"
+        ).bind(sessionId).first();
         return user || null;
     } catch (e) {
         return null;
@@ -52,7 +53,7 @@ export async function onRequestGet(context) {
         const { results: reviews } = await env.DB.prepare(`
             SELECT r.*, u.profile_picture 
             FROM reviews r
-            LEFT JOIN users u ON r.user_email = u.email
+            LEFT JOIN users u ON LOWER(r.user_email) = LOWER(u.email)
             WHERE r.product_id = ? 
             ORDER BY r.created_at DESC
         `).bind(productId).all();
@@ -196,14 +197,17 @@ export async function onRequestPost(context) {
             "SELECT title FROM products WHERE base_id = ?"
         ).bind(productId).first();
 
-        const productTitle = product ? product.title : productId;
+        const cleanEmail = user_email.trim().toLowerCase();
+        const cleanId = productId.trim().toLowerCase();
+        const cleanTitle = product && product.title ? product.title.trim().toLowerCase() : cleanId;
 
         const hasBought = await env.DB.prepare(`
             SELECT oi.id FROM order_items oi
             JOIN orders o ON oi.order_id = o.id
-            WHERE LOWER(o.customer_email) = LOWER(?) 
-              AND (LOWER(oi.product_name) LIKE LOWER(?) OR LOWER(oi.product_name) LIKE LOWER(?))
-        `).bind(user_email.trim(), `%${productTitle}%`, `%${productId}%`).first();
+            WHERE LOWER(TRIM(o.customer_email)) = ? 
+              AND (o.status IS NULL OR o.status != 'Storniert')
+              AND (LOWER(oi.product_name) LIKE ? OR LOWER(oi.product_name) LIKE ?)
+        `).bind(cleanEmail, `%${cleanTitle}%`, `%${cleanId}%`).first();
 
         if (!hasBought) {
             return new Response(JSON.stringify({ error: "Du kannst dieses Produkt nur bewerten, wenn du es gekauft hast." }), {
@@ -217,7 +221,7 @@ export async function onRequestPost(context) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
         `).bind(
             productId,
-            user_email,
+            user_email.trim(),
             customer_name || 'Kunde',
             parseInt(rating),
             title,

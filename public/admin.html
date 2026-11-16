@@ -966,7 +966,7 @@
                 loadProductSortList();
             } else {
                 const err = await res.json();
-                alert("Fehler beim Speichern: " + (err.message || "Unbekannter Fehler"));
+                alert("Fehler beim Speichern: " + (err.error || err.message || "Unbekannter Fehler"));
             }
         } catch (e) {
             console.error("Fehler:", e);
