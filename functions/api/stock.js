@@ -17,6 +17,27 @@ async function checkAdminAuth(context) {
     return user && (user.is_admin === 1 || user.is_admin === true);
 }
 
+export async function onRequestGet(context) {
+    const { env } = context;
+    const corsHeaders = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+    };
+
+    try {
+        await ensureSettingsTable(env);
+        const row = await env.DB.prepare(
+            "SELECT value FROM settings WHERE key = 'ignore_stock'"
+        ).first();
+
+        return new Response(JSON.stringify({
+            ignoreStock: row ? row.value === 'true' : false
+        }), { headers: corsHeaders });
+    } catch (err) {
+        return new Response(JSON.stringify({ ignoreStock: false }), { headers: corsHeaders });
+    }
+}
+
 export async function onRequestPost(context) {
     const { request, env } = context;
     const corsHeaders = { 
@@ -33,7 +54,21 @@ export async function onRequestPost(context) {
     }
 
     try {
-        const { variantId, stock } = await request.json();
+        const body = await request.json();
+
+        if (body.action === 'toggle_ignore_stock') {
+            await ensureSettingsTable(env);
+            const val = body.ignoreStock ? 'true' : 'false';
+            await env.DB.prepare(`
+                INSERT INTO settings (key, value)
+                VALUES ('ignore_stock', ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            `).bind(val).run();
+
+            return new Response(JSON.stringify({ success: true, ignoreStock: body.ignoreStock }), { headers: corsHeaders });
+        }
+
+        const { variantId, stock } = body;
         const newStock = parseInt(stock) || 0;
 
         const oldVariant = await env.DB.prepare("SELECT stock, product_base_id, name FROM product_variants WHERE id = ?").bind(variantId).first();
@@ -79,7 +114,6 @@ export async function onRequestPost(context) {
                                 message: htmlContent
                             })
                         }));
-                        
                     } catch (mailErr) {
                         console.error("Fehler beim Senden der Benachrichtigungs-Mail an", sub.email, mailErr);
                     }

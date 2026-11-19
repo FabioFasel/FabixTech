@@ -587,9 +587,8 @@ html, #cart-items-container {
 
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 380px));
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
-    justify-content: flex-start;
     align-items: stretch;
     max-width: 1200px;
     margin: 0 auto;
@@ -598,7 +597,6 @@ html, #cart-items-container {
 
 .product-card {
     width: 100%;
-    max-width: 380px;
     background-color: var(--bg-card);
     border: 1.2px solid var(--border-color);
     border-radius: 14px;
@@ -610,7 +608,6 @@ html, #cart-items-container {
     box-shadow: 0 4.8px 18px rgba(0, 0, 0, 0.05);
     margin: 0;
 }
-
 .product-card:hover {
     box-shadow: var(--shadow-md);
 }
@@ -1317,10 +1314,11 @@ html, body, .navbar, .tech-box, .material-card, footer {
 
 @media (max-width: 768px) {
     .product-grid {
-        justify-content: center;
+        grid-template-columns: 1fr;
     }
-    
+
     .product-card {
+        max-width: 420px;
         margin: 0 auto;
     }
 }
@@ -1339,6 +1337,10 @@ html, body, .navbar, .tech-box, .material-card, footer {
 @media (max-width: 1024px) {
   html {
     font-size: 85%;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .nav-container {

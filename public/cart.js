@@ -34,7 +34,7 @@ function addToCart(id, name, price, variant, maxStock) {
             alert("Du darfst nur 5 Geschenkkarten aufs mal bestellen.");
             return;
         }
-    } else {
+    } else if (!window.ignoreStockSystem) {
         if (stockLimit <= 0 && !bestehenderArtikel) {
             alert("Dieses Produkt ist aktuell ausverkauft.");
             return;
@@ -570,7 +570,7 @@ window.increaseQuantity = function(productId) {
             alert("Du darfst nur 5 Geschenkkarten aufs mal bestellen.");
             return;
         }
-    } else {
+    } else if (!window.ignoreStockSystem) {
         if (item.maxStock !== undefined && item.maxStock > 0 && item.quantity >= item.maxStock) {
             alert(`Es sind nur noch ${item.maxStock} Stück von dieser Variante auf Lager.`);
             return;

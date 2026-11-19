@@ -243,6 +243,80 @@
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .setting-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .setting-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .setting-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+            margin-left: auto;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        html[data-theme="dark"] .slider {
+            background-color: var(--bg-body);
+            border: 1px solid var(--border);
+        }
+
+        .theme-switch input:checked + .slider {
+            background-color: var(--primary);
+            border-color: transparent;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .theme-switch input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
         @media (max-width: 1024px) {
             .theme-toggle-btn {
                 bottom: 20px;
@@ -312,6 +386,20 @@
                 <button type="button" onclick="downloadDatabaseBackup()" style="background: var(--primary); width: 100%;">
                     <i class="fa-solid fa-download"></i> Backup herunterladen
                 </button>
+            </div>
+
+            <div class="order-card">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Lagerbestand-System</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-title">Lagerbestand ignorieren</span>
+                        <span class="setting-desc">Wenn aktiviert, bleiben alle Produkte bestellbar und der Bestand wird im Shop sowie beim Checkout ignoriert.</span>
+                    </div>
+                    <label class="theme-switch">
+                        <input type="checkbox" id="ignoreStockToggle" onchange="toggleIgnoreStock()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
 
             <div class="order-card">
@@ -843,10 +931,53 @@
             loadVersionSettings();
             loadProductSortList();
             loadPromoCodes();
+            loadIgnoreStockSetting();
         } else if (tab === 'sections') {
             if (sectionsTab) sectionsTab.style.display = 'block';
             if (btnSections) btnSections.style.background = 'var(--primary)';
             loadSectionsAdmin();
+        }
+    }
+
+    async function loadIgnoreStockSetting() {
+        try {
+            const res = await fetch(`/api/stock?t=${Date.now()}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const toggle = document.getElementById('ignoreStockToggle');
+            if (toggle) toggle.checked = Boolean(data.ignoreStock);
+        } catch (e) {
+            console.error("Fehler beim Laden der Bestandseinstellung:", e);
+        }
+    }
+
+    async function toggleIgnoreStock() {
+        const toggle = document.getElementById('ignoreStockToggle');
+        const ignoreStock = toggle.checked;
+        const token = getSessionToken();
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            const res = await fetch('/api/stock', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ action: 'toggle_ignore_stock', ignoreStock })
+            });
+
+            if (res.ok) {
+                alert(ignoreStock 
+                    ? "Lagerbestand wird ab sofort im gesamten Shop & Checkout ignoriert." 
+                    : "Lagerbestand-Prüfung ist wieder aktiv.");
+            } else {
+                const err = await res.json();
+                alert(err.error || "Nicht autorisiert oder Fehler beim Speichern.");
+                toggle.checked = !ignoreStock;
+            }
+        } catch (e) {
+            alert("Verbindungsfehler zum Server.");
+            toggle.checked = !ignoreStock;
         }
     }
 

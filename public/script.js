@@ -70,6 +70,16 @@ async function checkSessionValidity() {
     }
 }
 
+window.ignoreStockSystem = false;
+
+const stockSettingsPromise = fetch(`/api/stock?t=${Date.now()}`)
+    .then(res => res.ok ? res.json() : { ignoreStock: false })
+    .then(data => {
+        window.ignoreStockSystem = Boolean(data.ignoreStock);
+        return window.ignoreStockSystem;
+    })
+    .catch(() => false);
+
 const stockPromise = fetch(`/api/get-all-stocks?t=${Date.now()}`)
     .then(res => res.ok ? res.json() : [])
     .catch(err => {
@@ -139,7 +149,7 @@ function updatePrice(button) {
 }
 
 async function fetchAllStocks() {
-    const stocks = await stockPromise;
+    const [stocks, ignoreStock] = await Promise.all([stockPromise, stockSettingsPromise]);
     
     const stockMap = {};
     if (Array.isArray(stocks)) {
@@ -151,7 +161,13 @@ async function fetchAllStocks() {
 
     document.querySelectorAll('.variant-btn').forEach(btn => {
         const productId = btn.getAttribute('data-id');
-        if (productId in stockMap) {
+        if (ignoreStock) {
+            btn.style.opacity = '1';
+            btn.style.textDecoration = 'none';
+            if (productId in stockMap) {
+                btn.setAttribute('data-stock', stockMap[productId]);
+            }
+        } else if (productId in stockMap) {
             const stock = stockMap[productId];
             btn.setAttribute('data-stock', stock);
             
@@ -176,6 +192,15 @@ function updateMainButtonStock(produktKarte) {
     const alertBox = document.getElementById('stock-alert-box');
     
     if (!activeVariantBtn || !cartButton) return;
+
+    if (window.ignoreStockSystem) {
+        cartButton.disabled = false;
+        cartButton.innerText = "In den Warenkorb";
+        cartButton.setAttribute('data-max-stock', '9999');
+        if (alertBox) alertBox.style.display = 'none';
+        return;
+    }
+
     const stockAttr = activeVariantBtn.getAttribute('data-stock') || activeVariantBtn.getAttribute('data-max-stock') || "0";
     const aktuellerBestand = parseInt(stockAttr);
     

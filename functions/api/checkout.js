@@ -6,6 +6,17 @@ function parseCookie(cookieString, key) {
     return match ? match[2] : null;
 }
 
+async function isStockIgnored(env) {
+    try {
+        const row = await env.DB.prepare(
+            "SELECT value FROM settings WHERE key = 'ignore_stock'"
+        ).first();
+        return row ? row.value === 'true' : false;
+    } catch (e) {
+        return false;
+    }
+}
+
 export async function onRequestPost(context) {
     try {
         const stripe = new Stripe(context.env.STRIPE_SECRET_KEY);
@@ -29,6 +40,8 @@ export async function onRequestPost(context) {
         try {
             await context.env.DB.prepare("ALTER TABLE gift_cards ADD COLUMN order_id TEXT").run();
         } catch (e) {}
+
+        const ignoreStock = await isStockIgnored(context.env);
 
         if (action === 'confirm_free_order') {
             if (!shippingAddress || !shippingAddress.email) {
@@ -155,7 +168,7 @@ export async function onRequestPost(context) {
                             console.error("Fehler beim Erstellen der Geschenkkarte:", gcErr);
                         }
                     }
-                } else {
+                } else if (!ignoreStock) {
                     if (item.id && item.quantity) {
                         await context.env.DB.prepare(
                             "UPDATE product_variants SET stock = stock - ? WHERE id = ?"
@@ -187,7 +200,7 @@ export async function onRequestPost(context) {
             const echterPreisFranken = parseFloat(result.price) || 0;
             const echterPreisRappen = Math.round(echterPreisFranken * 100);
 
-            if (aktuellerBestand < kundenMenge) {
+            if (!ignoreStock && aktuellerBestand < kundenMenge) {
                 return new Response(JSON.stringify({ error: `Produkt "${item.name}" ausverkauft.` }), { status: 400 });
             }
 
