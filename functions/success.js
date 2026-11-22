@@ -220,24 +220,86 @@ export async function onRequestGet(context) {
 
     try {
         let subtotalVal = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.quantity)), 0);
-        await fetch("https://internal/send-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                type: 'order_confirmation',
-                recipient: kundeEmail,
-                customerName: kundeName,
-                orderId: orderId,
-                items: items,
-                subtotal: subtotalVal,
-                discount: rabattWert,
-                promoCode: promoCode,
-                shipping: shippingCost,
-                total: parseFloat(gesamtBetrag),
-                giftCards: generatedGiftCards,
-                deliveryTime: maxDeliveryText
-            })
-        });
+        
+        const itemsHtml = (items || []).map(i => `
+            <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px;">
+                    <strong>${i.quantity}x</strong> ${i.name} <span style="color: #64748b; font-size: 12px;">(${i.farbe || i.variant || 'Standard'})</span>
+                </td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; color: #1e293b; font-size: 14px; font-weight: 600;">
+                    CHF ${(Number(i.price) * Number(i.quantity)).toFixed(2)}
+                </td>
+            </tr>
+        `).join('');
+
+        let giftCardsEmailHtml = '';
+        if (generatedGiftCards.length > 0) {
+            giftCardsEmailHtml = `
+                <h3 style="font-size: 16px; color: #1e293b; margin-top: 25px; margin-bottom: 10px;">Deine digitalen Geschenkkarten</h3>
+                ${generatedGiftCards.map(gc => `
+                    <div style="background: #f8fafc; border: 2px dashed #d40202; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 10px;">
+                        <p style="font-size: 12px; color: #64748b; margin: 0 0 5px 0;">Gutscheincode:</p>
+                        <strong style="font-size: 20px; color: #d40202; letter-spacing: 2px;">${gc.code}</strong>
+                        <p style="font-size: 13px; color: #1e293b; margin: 5px 0 0 0;">Wert: CHF ${Number(gc.value).toFixed(2)}</p>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        const htmlContent = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+                <div style="text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 20px;">
+                    <h2 style="color: #1e293b; margin: 0; font-size: 24px; font-weight: 800;">Fabix<span style="color: #d40202;">Tech</span></h2>
+                    <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Vielen Dank für deine Bestellung!</p>
+                </div>
+
+                <p style="font-size: 15px; color: #334155;">Hallo <strong>${kundeName || 'Kunde'}</strong>,</p>
+                <p style="font-size: 14px; color: #475569; line-height: 1.5;">ich habe deine Bestellung <strong>#${orderId}</strong> erhalten und kümmere mich jetzt darum. Geschätzte Lieferzeit: <strong>${maxDeliveryText}</strong>.</p>
+
+                ${giftCardsEmailHtml}
+
+                <h3 style="font-size: 16px; color: #1e293b; margin-top: 25px; margin-bottom: 10px;">Bestellübersicht</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                    ${itemsHtml}
+                </table>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b; font-size: 14px;">Zwischensumme</td>
+                        <td style="padding: 6px 0; text-align: right; color: #334155; font-size: 14px;">CHF ${Number(subtotalVal).toFixed(2)}</td>
+                    </tr>
+                    ${rabattWert > 0 ? `<tr><td style="padding: 6px 0; color: #16a34a; font-size: 14px;">Rabatt (${promoCode})</td><td style="padding: 6px 0; text-align: right; color: #16a34a; font-size: 14px;">- CHF ${Number(rabattWert).toFixed(2)}</td></tr>` : ''}
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b; font-size: 14px;">Versandkosten</td>
+                        <td style="padding: 6px 0; text-align: right; color: #334155; font-size: 14px;">CHF ${Number(shippingCost).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; border-top: 2px solid #e2e8f0; color: #1e293b; font-size: 16px; font-weight: bold;">Gesamttotal</td>
+                        <td style="padding: 12px 0; border-top: 2px solid #e2e8f0; text-align: right; color: #d40202; font-size: 18px; font-weight: 800;">CHF ${Number(gesamtBetrag).toFixed(2)}</td>
+                    </tr>
+                </table>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">FabixTech &bull; Automatische Bestellbestätigung</p>
+            </div>
+        `;
+
+        if (kundeEmail && kundeEmail !== 'Keine E-Mail') {
+            const emailResponse = await context.env.EMAIL_SERVICE.fetch(new Request("https://internal/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    recipient: kundeEmail,
+                    subject: "Bestellbestätigung #" + orderId + " | FabixTech",
+                    htmlContent: htmlContent
+                })
+            }));
+
+            const emailResult = await emailResponse.json();
+            if (emailResult.status !== "success") {
+                throw new Error(emailResult.message || "Fehler beim E-Mail-Versand über den Worker");
+            }
+        }
     } catch (e) {
         console.error("E-Mail-Versand fehlgeschlagen:", e);
     }

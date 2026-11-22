@@ -109,7 +109,7 @@
                         <div class="material-card" style="text-align: center; padding: 48px 24px; margin-top: 20px;">
                             <i class="fa-solid fa-box-open" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
                             <h3 style="font-size: 20px; margin-bottom: 8px; color: var(--text-main);">Noch keine Bestellungen</h3>
-                            <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 24px;">Du hast bisher noch nichts bbestellt.</p>
+                            <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 24px;">Du hast bisher noch nichts bestellt.</p>
                             <a href="shop" class="btn btn-primary" style="text-decoration: none; display: inline-block;">Zum Shop</a>
                         </div>
                     `;
@@ -121,14 +121,40 @@
                         ? `<a href="https://service.post.ch/ekp-web/ui/list?mailpieces=${encodeURIComponent(order.tracking_number)}" target="_blank" class="btn btn-primary" style="display: inline-block; margin-top: 10px; font-size: 14px; padding: 8px 14px;">Paket verfolgen (Die Post) &#8599;</a>`
                         : '<p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Noch keine Sendungsnummer hinterlegt.</p>';
 
+                    const itemsList = (order.items || []).map(i => `
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; border-bottom: 1px solid var(--border-color);">
+                            <span><strong>${i.quantity}x</strong> ${i.product_name} <small style="color:var(--text-muted);">(${i.variant || 'Standard'})</small></span>
+                            <span>CHF ${(Number(i.price) * Number(i.quantity)).toFixed(2)}</span>
+                        </div>
+                    `).join('');
+
+                    const giftCardsHtml = (order.gift_cards && order.gift_cards.length > 0) ? `
+                        <div style="margin-top: 12px; padding: 12px; background: var(--bg-body); border-radius: 8px; border: 1px dashed var(--primary);">
+                            <strong style="font-size: 13px; color: var(--primary);">Deine gekauften Gutscheincodes:</strong>
+                            ${order.gift_cards.map(gc => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 14px;">
+                                    <code style="background: var(--bg-card); padding: 4px 8px; border-radius: 4px; font-weight: bold; color: var(--primary);">${gc.code}</code>
+                                    <span>Wert: CHF ${Number(gc.initial_balance).toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '';
+
                     return `
                         <div class="material-card" style="margin-bottom: 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px;">
-                                <strong>Bestellung #${order.id}</strong>
+                                <div>
+                                    <strong>Bestellung #${order.id}</strong>
+                                    <div style="font-size: 12px; color: var(--text-muted);">${order.created_at ? new Date(order.created_at).toLocaleString('de-CH') : ''}</div>
+                                </div>
                                 <span class="badge" style="background: var(--bg-dark); padding: 4px 10px; border-radius: 12px;">${order.status || 'Offen'}</span>
                             </div>
-                            <p style="font-size: 14px; margin-bottom: 8px;">Gesamtsumme: <strong>CHF ${Number(order.total_amount).toFixed(2)}</strong></p>
-                            ${trackingLink}
+                            <div style="margin-bottom: 12px;">${itemsList}</div>
+                            ${giftCardsHtml}
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border-color);">
+                                <span>Gesamtsumme: <strong>CHF ${Number(order.total_amount).toFixed(2)}</strong></span>
+                                ${trackingLink}
+                            </div>
                         </div>
                     `;
                 }).join('');
