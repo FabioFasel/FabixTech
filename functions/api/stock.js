@@ -56,7 +56,6 @@ export async function onRequestPost(context) {
         const body = await request.json();
 
         if (body.action === 'toggle_ignore_stock') {
-            await ensureSettingsTable(env);
             const val = body.ignoreStock ? 'true' : 'false';
             await env.DB.prepare(`
                 INSERT INTO settings (key, value)
@@ -67,58 +66,68 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ success: true, ignoreStock: body.ignoreStock }), { headers: corsHeaders });
         }
 
-        const { variantId, stock } = body;
-        const newStock = parseInt(stock) || 0;
+        const { variantId, stock, deliveryTime } = body;
+        
+        if (deliveryTime !== undefined && stock !== undefined) {
+            const newStock = parseInt(stock) || 0;
+            await env.DB.prepare("UPDATE product_variants SET stock = ?, delivery_time = ? WHERE id = ?").bind(newStock, deliveryTime, variantId).run();
+        } else if (stock !== undefined) {
+            const newStock = parseInt(stock) || 0;
+            await env.DB.prepare("UPDATE product_variants SET stock = ? WHERE id = ?").bind(newStock, variantId).run();
+        } else if (deliveryTime !== undefined) {
+            await env.DB.prepare("UPDATE product_variants SET delivery_time = ? WHERE id = ?").bind(deliveryTime, variantId).run();
+        }
 
-        const oldVariant = await env.DB.prepare("SELECT stock, product_base_id, name FROM product_variants WHERE id = ?").bind(variantId).first();
-        const oldStock = oldVariant ? parseInt(oldVariant.stock) : 0;
+        if (stock !== undefined) {
+            const newStock = parseInt(stock) || 0;
+            const oldVariant = await env.DB.prepare("SELECT stock, product_base_id, name FROM product_variants WHERE id = ?").bind(variantId).first();
+            const oldStock = oldVariant ? parseInt(oldVariant.stock) : 0;
 
-        await env.DB.prepare("UPDATE product_variants SET stock = ? WHERE id = ?").bind(newStock, variantId).run();
+            if (oldStock <= 0 && newStock > 0 && oldVariant) {
+                const { results: subs } = await env.DB.prepare(
+                    "SELECT email FROM stock_notifications WHERE variant_id = ?"
+                ).bind(variantId).all();
 
-        if (oldStock <= 0 && newStock > 0 && oldVariant) {
-            const { results: subs } = await env.DB.prepare(
-                "SELECT email FROM stock_notifications WHERE variant_id = ?"
-            ).bind(variantId).all();
+                if (subs && subs.length > 0) {
+                    const prodInfo = await env.DB.prepare("SELECT title, base_id FROM products WHERE base_id = ?").bind(oldVariant.product_base_id).first();
+                    const prodTitle = prodInfo ? prodInfo.title : "Produkt";
+                    const variantName = oldVariant.name;
+                    const baseId = oldVariant.product_base_id;
 
-            if (subs && subs.length > 0) {
-                const prodInfo = await env.DB.prepare("SELECT title, base_id FROM products WHERE base_id = ?").bind(oldVariant.product_base_id).first();
-                const prodTitle = prodInfo ? prodInfo.title : "Produkt";
-                const variantName = oldVariant.name;
-                const baseId = oldVariant.product_base_id;
-
-                for (const sub of subs) {
-                    try {
-                        const htmlContent = `
-                            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-                                <div style="text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 20px;">
-                                    <h2 style="color: #1e293b; margin: 0; font-size: 24px; font-weight: 800;">Fabix<span style="color: #d40202;">Tech</span></h2>
-                                    <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Dein gewünschtes Produkt ist wieder da!</p>
+                    for (const sub of subs) {
+                        try {
+                            const htmlContent = `
+                                <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+                                    <div style="text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 20px;">
+                                        <h2 style="color: #1e293b; margin: 0; font-size: 24px; font-weight: 800;">Fabix<span style="color: #d40202;">Tech</span></h2>
+                                        <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Dein gewünschtes Produkt ist wieder da!</p>
+                                    </div>
+                                    <p style="font-size: 15px; color: #334155;">Hallo,</p>
+                                    <p style="font-size: 14px; color: #475569; line-height: 1.5;">gute Nachrichten! Das Produkt <strong>${prodTitle} (${variantName})</strong> ist wieder auf Lager.</p>
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="https://fabixtech.ch/product.html?id=${baseId}" style="background-color: #d40202; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">Jetzt ansehen</a>
+                                    </div>
+                                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                                    <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">Dies ist eine einmalige automatisch versendete E-Mail. Bitte antworte nicht darauf.</p>
                                 </div>
-                                <p style="font-size: 15px; color: #334155;">Hallo,</p>
-                                <p style="font-size: 14px; color: #475569; line-height: 1.5;">gute Nachrichten! Das Produkt <strong>${prodTitle} (${variantName})</strong> ist wieder auf Lager.</p>
-                                <div style="text-align: center; margin: 30px 0;">
-                                    <a href="https://fabixtech.ch/product.html?id=${baseId}" style="background-color: #d40202; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">Jetzt ansehen</a>
-                                </div>
-                                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                                <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">Dies ist eine einmalige automatisch versendete E-Mail. Bitte antworte nicht darauf.</p>
-                            </div>
-                        `;
+                            `;
 
-                        await env.EMAIL_SERVICE.fetch(new Request("https://internal/", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                recipient: sub.email,
-                                subject: "Wieder verfügbar: " + prodTitle + " (" + variantName + ") | FabixTech",
-                                message: htmlContent
-                            })
-                        }));
-                    } catch (mailErr) {
-                        console.error("Fehler beim Senden der Benachrichtigungs-Mail an", sub.email, mailErr);
+                            await env.EMAIL_SERVICE.fetch(new Request("https://internal/", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    recipient: sub.email,
+                                    subject: "Wieder verfügbar: " + prodTitle + " (" + variantName + ") | FabixTech",
+                                    message: htmlContent
+                                })
+                            }));
+                        } catch (mailErr) {
+                            console.error("Fehler beim Senden der Benachrichtigungs-Mail an", sub.email, mailErr);
+                        }
                     }
-                }
 
-                await env.DB.prepare("DELETE FROM stock_notifications WHERE variant_id = ?").bind(variantId).run();
+                    await env.DB.prepare("DELETE FROM stock_notifications WHERE variant_id = ?").bind(variantId).run();
+                }
             }
         }
         

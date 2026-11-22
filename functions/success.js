@@ -22,10 +22,6 @@ export async function onRequestGet(context) {
     let generatedGiftCards = [];
     let orderId = freeOrderId || "";
 
-    try {
-        await context.env.DB.prepare("ALTER TABLE gift_cards ADD COLUMN order_id TEXT").run();
-    } catch (e) {}
-
     if (freeOrderId) {
         const order = await context.env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(freeOrderId).first();
         if (!order) {
@@ -37,15 +33,18 @@ export async function onRequestGet(context) {
         gesamtBetrag = Number(order.total_amount).toFixed(2);
         rabattWert = Number(order.discount_amount || 0);
         promoCode = order.promo_code || 'Keiner';
-        shippingCost = 0.00;
 
         const orderItems = await context.env.DB.prepare("SELECT * FROM order_items WHERE order_id = ?").bind(freeOrderId).all();
         items = (orderItems.results || []).map(i => ({
+            id: i.product_id,
             name: i.product_name,
             farbe: i.variant,
             quantity: i.quantity,
             price: i.price
         }));
+
+        const isOnlyDigital = items.every(i => (i.name || '').toLowerCase().includes('gutschein') || (i.name || '').toLowerCase().includes('gift'));
+        shippingCost = isOnlyDigital ? 0.00 : 5.90;
 
         const gcResults = await context.env.DB.prepare(
             "SELECT code, initial_balance as value FROM gift_cards WHERE order_id = ?"
@@ -70,9 +69,6 @@ export async function onRequestGet(context) {
         const usedGiftCard = paymentIntent.metadata?.usedGiftCard;
         rabattWert = parseFloat(paymentIntent.metadata?.rabatt || '0.00');
 
-        const isOnlyDigital = paymentIntent.metadata?.isOnlyDigital === 'true';
-        shippingCost = isOnlyDigital ? 0.00 : 5.90;
-
         if (paymentIntent.metadata) {
             Object.keys(paymentIntent.metadata)
             .filter(key => key.startsWith('item_'))
@@ -83,6 +79,9 @@ export async function onRequestGet(context) {
                 } catch (e) {}
             });
         }
+
+        const isOnlyDigital = items.every(i => i.isGiftCard || (i.name || '').toLowerCase().includes('gutschein') || (i.name || '').toLowerCase().includes('gift'));
+        shippingCost = isOnlyDigital ? 0.00 : 5.90;
 
         const existingOrder = await context.env.DB.prepare(
             "SELECT id FROM orders WHERE payment_intent_id = ?"
@@ -99,7 +98,7 @@ export async function onRequestGet(context) {
 
             await context.env.DB.prepare(`
                 INSERT INTO orders (id, payment_intent_id, customer_name, customer_email, shipping_address, shipping_note, total_amount, discount_amount, promo_code, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'offen')
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
                 orderId,
                 paymentIntentId,
@@ -109,7 +108,8 @@ export async function onRequestGet(context) {
                 shippingNote,
                 parseFloat(gesamtBetrag),
                 rabattWert,
-                promoCode
+                promoCode,
+                isOnlyDigital ? 'Digital / Abgeschlossen' : 'offen'
             ).run();
 
             if (usedGiftCard && rabattWert > 0) {
@@ -193,6 +193,53 @@ export async function onRequestGet(context) {
                 generatedGiftCards = gcResults.results;
             }
         }
+    }
+
+    let maxDeliveryText = "2-3 Werktage";
+    let maxDaysNumber = 3;
+    try {
+        for (const item of items) {
+            const isGc = item.isGiftCard || (item.name || '').toLowerCase().includes('gutschein') || (item.name || '').toLowerCase().includes('gift');
+            if (!isGc && item.id) {
+                const variantData = await context.env.DB.prepare("SELECT delivery_time FROM product_variants WHERE id = ?").bind(item.id).first();
+                if (variantData && variantData.delivery_time) {
+                    const match = variantData.delivery_time.match(/\d+/);
+                    if (match) {
+                        const days = parseInt(match[0]);
+                        if (days > maxDaysNumber) {
+                            maxDaysNumber = days;
+                            maxDeliveryText = variantData.delivery_time;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Fehler beim Ermitteln der Lieferzeit:", err);
+    }
+
+    try {
+        let subtotalVal = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.quantity)), 0);
+        await fetch("https://internal/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                type: 'order_confirmation',
+                recipient: kundeEmail,
+                customerName: kundeName,
+                orderId: orderId,
+                items: items,
+                subtotal: subtotalVal,
+                discount: rabattWert,
+                promoCode: promoCode,
+                shipping: shippingCost,
+                total: parseFloat(gesamtBetrag),
+                giftCards: generatedGiftCards,
+                deliveryTime: maxDeliveryText
+            })
+        });
+    } catch (e) {
+        console.error("E-Mail-Versand fehlgeschlagen:", e);
     }
 
     const begruessungText = kundeName ? `Danke, ${kundeName}!` : "Danke für deine Bestellung!";

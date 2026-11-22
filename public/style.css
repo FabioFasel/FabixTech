@@ -1340,7 +1340,7 @@ html, body, .navbar, .tech-box, .material-card, footer {
   }
 
   .product-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .nav-container {
