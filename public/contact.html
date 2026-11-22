@@ -153,5 +153,44 @@
             </div>
         </div>
     </div>
+    <script>
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const submitBtn = form.querySelector('.form-submit-btn');
+            const originalText = submitBtn.innerText;
+
+            const email = document.getElementById('email').value.trim();
+            const subject = document.getElementById('subject').value.trim();
+            const message = document.getElementById('message').value.trim();
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Wird gesendet...';
+
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, subject, message })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    alert("Vielen Dank! Deine Nachricht wurde erfolgreich gesendet.");
+                    form.reset();
+                } else {
+                    alert("Fehler: " + (data.error || "Nachricht konnte nicht gesendet werden."));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Verbindungsfehler zum Server. Bitte versuche es später erneut.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalText;
+            }
+        }
+    </script>
 </body>
 </html>
