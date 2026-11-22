@@ -30,15 +30,21 @@ export async function onRequestGet(context) {
         });
     }
 
-    const { results: orders } = await env.DB.prepare(
-        "SELECT * FROM orders WHERE customer_email = ? ORDER BY created_at DESC"
-    ).bind(user.email).all();
+    const { results: giftCards } = await env.DB.prepare(
+            "SELECT code, initial_balance, current_balance FROM gift_cards WHERE order_id = ?"
+        ).bind(order.id).all();
+        order.gift_cards = giftCards;
 
     for (let order of orders) {
         const { results: items } = await env.DB.prepare(
             "SELECT * FROM order_items WHERE order_id = ?"
         ).bind(order.id).all();
         order.items = items;
+
+        const { results: giftCards } = await env.DB.prepare(
+            "SELECT code, initial_balance FROM gift_cards WHERE order_id = ?"
+        ).bind(order.id).all();
+        order.gift_cards = giftCards;
     }
 
     return new Response(JSON.stringify(orders), {

@@ -57,6 +57,13 @@ export async function onRequestGet(context) {
             "SELECT * FROM order_items WHERE order_id = ?"
         ).bind(order.id).all();
         order.items = items;
+
+        const hasOnlyGiftCards = items.length > 0 && items.every(i => 
+            (i.product_name || '').toLowerCase().includes('gutschein') || 
+            (i.product_name || '').toLowerCase().includes('gift')
+        );
+
+        order.shipping_cost = hasOnlyGiftCards ? 0.00 : 5.90;
     }
 
     return new Response(JSON.stringify(orders), {

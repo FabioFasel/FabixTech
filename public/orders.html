@@ -132,9 +132,12 @@
                         <div style="margin-top: 15px; padding: 16px; background: var(--bg-dark); border-radius: 10px; border: 2px dashed var(--light-color);">
                             <strong style="font-size: 14px; color: var(--light-color); display: block; margin-bottom: 8px;"><i class="fa-solid fa-gift"></i> Deine digitalen Gutscheincodes:</strong>
                             ${order.gift_cards.map(gc => `
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; background: var(--bg-card); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; background: var(--bg-card); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
                                     <code style="font-size: 16px; font-weight: 900; letter-spacing: 2px; color: var(--light-color);">${gc.code}</code>
-                                    <span style="font-weight: bold; font-size: 14px;">Wert: CHF ${Number(gc.initial_balance).toFixed(2)}</span>
+                                    <div style="text-align: right; font-size: 13px;">
+                                        <div>Initialwert: CHF ${Number(gc.initial_balance).toFixed(2)}</div>
+                                        <div style="color: var(--primary); font-weight: bold;">Restguthaben: CHF ${Number(gc.current_balance ?? gc.initial_balance).toFixed(2)}</div>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
