@@ -49,6 +49,7 @@ export async function onRequestPost(context) {
             }
 
             let serverTotal = 0;
+            let itemsSubtotal = 0;
             let verifiedCart = [];
             for (const item of cart) {
                 const productVariant = await context.env.DB.prepare(
@@ -61,6 +62,7 @@ export async function onRequestPost(context) {
 
                 const itemPrice = parseFloat(productVariant.price);
                 const qty = parseInt(item.quantity) || 1;
+                itemsSubtotal += itemPrice * qty;
                 serverTotal += itemPrice * qty;
 
                 const vId = (item.id || '').toLowerCase();
@@ -82,6 +84,8 @@ export async function onRequestPost(context) {
             serverTotal += shippingCost;
 
             let verifiedDiscount = 0;
+            let appliedPromoName = 'Keiner';
+
             if (usedGiftCard && usedGiftCard !== 'KEINER') {
                 const gc = await context.env.DB.prepare(
                     "SELECT current_balance, is_active FROM gift_cards WHERE code = ?"
@@ -92,6 +96,20 @@ export async function onRequestPost(context) {
                 }
 
                 verifiedDiscount = Math.min(serverTotal, gc.current_balance);
+                appliedPromoName = usedGiftCard;
+            } else if (promoCode && promoCode.trim() !== '') {
+                const cleanCode = promoCode.trim().toUpperCase();
+                const promo = await context.env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(cleanCode).first();
+                
+                if (promo) {
+                    if (promo.type === 'percent') {
+                        verifiedDiscount = (itemsSubtotal * promo.value) / 100;
+                    } else if (promo.type === 'fixed') {
+                        verifiedDiscount = promo.value;
+                    }
+                    verifiedDiscount = Math.min(serverTotal, verifiedDiscount);
+                    appliedPromoName = cleanCode;
+                }
             }
 
             const finalTotal = Math.max(0, serverTotal - verifiedDiscount);
@@ -112,10 +130,10 @@ export async function onRequestPost(context) {
                 `${shippingAddress.street}, ${shippingAddress.zip} ${shippingAddress.city}`,
                 finalTotal,
                 verifiedDiscount,
-                usedGiftCard || 'Keiner'
+                appliedPromoName
             ).run();
 
-            if (usedGiftCard && verifiedDiscount > 0) {
+            if (usedGiftCard && usedGiftCard !== 'KEINER' && verifiedDiscount > 0) {
                 await context.env.DB.prepare(`
                     UPDATE gift_cards 
                     SET current_balance = MAX(0, current_balance - ?),

@@ -313,6 +313,7 @@ async function initCheckoutPage(promoCode = null) {
                         body: JSON.stringify({
                             action: 'confirm_free_order',
                             usedGiftCard: data.usedGiftCard,
+                            promoCode: data.appliedCode,
                             rabattWert: data.discount,
                             items: formattedCart,
                             shippingAddress: {
@@ -325,6 +326,7 @@ async function initCheckoutPage(promoCode = null) {
                             }
                         })
                     });
+
                     const freeData = await freeRes.json();
                     if (freeData.success) {
                         localStorage.removeItem('cart');
