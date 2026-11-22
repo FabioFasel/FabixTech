@@ -109,7 +109,7 @@ export async function onRequestGet(context) {
                 parseFloat(gesamtBetrag),
                 rabattWert,
                 promoCode,
-                isOnlyDigital ? 'Digital / Abgeschlossen' : 'offen'
+                isOnlyDigital ? 'Digital abgeschlossen' : 'offen'
             ).run();
 
             if (usedGiftCard && rabattWert > 0) {

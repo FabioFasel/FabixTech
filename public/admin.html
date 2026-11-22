@@ -1187,7 +1187,7 @@
 
                 const orderDate = new Date(order.created_at || Date.now());
                 const isOlderThan30Days = (now - orderDate) > thirtyDaysInMs;
-                const isCompleted = ['Versendet', 'Zugestellt', 'Storniert', 'Digital / Abgeschlossen'].includes(order.status);
+                const isCompleted = ['Versendet', 'Zugestellt', 'Storniert', 'Digital abgeschlossen'].includes(order.status);
 
                 if (isCompleted && isOlderThan30Days) {
                     return false;
@@ -1238,20 +1238,18 @@
                 const currentStatus = order.status || 'Offen';
                 const formattedDate = order.created_at ? new Date(order.created_at).toLocaleString('de-CH', { timeZone: 'Europe/Zurich' }) : '';
                 const totalAmount = Number(order.total_amount || 0);
-                const shippingCost = hasOnlyGiftCards ? 0.00 : 5.90;
+                
+                const orderShippingCost = hasOnlyGiftCards ? 0.00 : 5.90;
 
-                const statusSelectHtml = hasOnlyGiftCards
-                    ? `<select onchange="updateOrderStatus('${order.id}', this.value)" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-weight:bold; cursor:pointer;">
-                            <option value="Digital abgeschlossen" ${currentStatus === 'Digital / Abgeschlossen' ? 'selected' : ''}>Digital / Abgeschlossen</option>
-                            <option value="Storniert" ${currentStatus === 'Storniert' ? 'selected' : ''}>Storniert</option>
-                       </select>`
-                    : `<select onchange="updateOrderStatus('${order.id}', this.value)" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-weight:bold; cursor:pointer;">
-                            <option value="Offen" ${currentStatus === 'Offen' ? 'selected' : ''}>Offen</option>
-                            <option value="In Bearbeitung" ${currentStatus === 'In Bearbeitung' ? 'selected' : ''}>In Bearbeitung</option>
-                            <option value="Versendet" ${currentStatus === 'Versendet' ? 'selected' : ''}>Versendet</option>
-                            <option value="Zugestellt" ${currentStatus === 'Zugestellt' ? 'selected' : ''}>Zugestellt</option>
-                            <option value="Storniert" ${currentStatus === 'Storniert' ? 'selected' : ''}>Storniert</option>
-                       </select>`;
+                const statusSelectHtml = `
+                    <select onchange="updateOrderStatus('${order.id}', this.value)" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-weight:bold; cursor:pointer;">
+                        <option value="Offen" ${currentStatus === 'Offen' ? 'selected' : ''}>Offen</option>
+                        <option value="In Bearbeitung" ${currentStatus === 'In Bearbeitung' ? 'selected' : ''}>In Bearbeitung</option>
+                        <option value="Versendet" ${currentStatus === 'Versendet' ? 'selected' : ''}>Versendet</option>
+                        <option value="Zugestellt" ${currentStatus === 'Zugestellt' ? 'selected' : ''}>Zugestellt</option>
+                        <option value="Storniert" ${currentStatus === 'Storniert' ? 'selected' : ''}>Storniert</option>
+                        <option value="Digital abgeschlossen" ${currentStatus === 'Digital abgeschlossen' ? 'selected' : ''}>Digital abgeschlossen</option>
+                    </select>`;
 
                 let discount = Number(order.discount_amount || 0);
 
@@ -1267,7 +1265,8 @@
 
                         <div style="background:var(--bg-body); padding:12px; border-radius:6px; margin-bottom:12px; font-size:13px; line-height:1.6;">
                             <div><strong>Kunde:</strong> ${order.customer_name || 'Kein Name'} (${order.customer_email || 'Keine E-Mail'})</div>
-                            <div><strong>Adresse:</strong> ${order.shipping_address || 'Keine Adresse angegeben'}</div>${order.shipping_note ? `<div style="margin-top: 6px; color: var(--primary);"><strong>Lieferhinweis:</strong> ${order.shipping_note}</div>` : ''}
+                            <div><strong>Adresse:</strong> ${order.shipping_address || 'Keine Adresse angegeben'}</div>
+                            ${order.shipping_note ? `<div style="margin-top: 6px; color: var(--primary);"><strong>Lieferhinweis:</strong> ${order.shipping_note}</div>` : ''}
                         </div>
 
                         <ul style="background:var(--bg-body); padding:12px; border-radius:6px; list-style:none; margin:0;">
@@ -1288,7 +1287,7 @@
 
                                 <li style="display:flex; justify-content:space-between; padding:2px 0; color:var(--text-main);">
                                     <span>Versand:</span>
-                                    <span>CHF ${shippingCost.toFixed(2)}</span>
+                                    <span>CHF ${orderShippingCost.toFixed(2)}</span>
                                 </li>
 
                                 <li style="display:flex; justify-content:space-between; padding:4px 0; margin-top:4px; font-size:15px;">
