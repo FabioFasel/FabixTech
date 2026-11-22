@@ -25,7 +25,6 @@ export async function onRequestGet(context) {
     };
 
     try {
-        await ensureSettingsTable(env);
         const row = await env.DB.prepare(
             "SELECT value FROM settings WHERE key = 'ignore_stock'"
         ).first();
