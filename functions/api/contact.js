@@ -11,9 +11,18 @@ export async function onRequestPost(context) {
             });
         }
 
+        if (!env.EMAIL_SERVICE) {
+            return new Response(JSON.stringify({ error: "Service Binding EMAIL_SERVICE fehlt in den Pages-Einstellungen." }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         const emailPayload = {
+            from: "FabixTech Kontakt <noreply@fabixtech.ch>",
             to: "support@fabixtech.ch",
             reply_to: email,
+            replyTo: email,
             subject: `[Kontaktformular] ${subject}`,
             html: `
                 <h2>Neue Kontaktanfrage über FabixTech.ch</h2>
@@ -32,7 +41,11 @@ export async function onRequestPost(context) {
         });
 
         if (!res.ok) {
-            throw new Error("Fehler beim internen E-Mail-Versand");
+            const errorDetail = await res.text();
+            return new Response(JSON.stringify({ error: `Worker-Fehler (${res.status}): ${errorDetail}` }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
         return new Response(JSON.stringify({ success: true }), {
@@ -41,8 +54,7 @@ export async function onRequestPost(context) {
         });
 
     } catch (err) {
-        console.error("Kontaktformular-Fehler:", err);
-        return new Response(JSON.stringify({ error: "Nachricht konnte nicht gesendet werden." }), {
+        return new Response(JSON.stringify({ error: err.message || "Interner Serverfehler" }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });
