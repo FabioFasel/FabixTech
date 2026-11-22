@@ -18,20 +18,26 @@ export async function onRequestPost(context) {
             });
         }
 
+        const formattedHtml = `
+            <h2>Neue Kontaktanfrage über FabixTech.ch</h2>
+            <p><strong>Absender:</strong> ${email}</p>
+            <p><strong>Betreff:</strong> ${subject}</p>
+            <hr>
+            <p><strong>Nachricht:</strong></p>
+            <p style="white-space: pre-wrap;">${message}</p>
+        `;
+
         const emailPayload = {
             from: "FabixTech Kontakt <noreply@fabixtech.ch>",
             to: "support@fabixtech.ch",
             reply_to: email,
             replyTo: email,
             subject: `[Kontaktformular] ${subject}`,
-            html: `
-                <h2>Neue Kontaktanfrage über FabixTech.ch</h2>
-                <p><strong>Absender:</strong> ${email}</p>
-                <p><strong>Betreff:</strong> ${subject}</p>
-                <hr>
-                <p><strong>Nachricht:</strong></p>
-                <p style="white-space: pre-wrap;">${message}</p>
-            `
+            html: formattedHtml,
+            htmlContent: formattedHtml,
+            body: formattedHtml,
+            content: formattedHtml,
+            text: `Absender: ${email}\nBetreff: ${subject}\n\n${message}`
         };
 
         const res = await env.EMAIL_SERVICE.fetch("https://internal/send", {
