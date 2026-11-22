@@ -347,7 +347,7 @@ async function initCheckoutPage(promoCode = null) {
             paymentElementDiv.innerHTML = ''; 
         }
 
-        const stripe = Stripe('pk_test_51Tt9xjHRWCYHtDl0BltylAKQKcSZtBqXnkdvoRPHxrWK89UNPaM8dAvbDps7eE7kYkaj2T8yCJEHVpVjoNk6PO9w00CgUpqhlO');
+        const stripe = Stripe('pk_live_51UZ8a0Cjy9t4yER56ROYjtRnyH3ur6LqH1GBzKNikG1JpIJv3M98VfjQXRBvYuETlt6uyemvhWnCczwnoE6qn9yU00nNQtjGed');
         const isDark = localStorage.getItem('theme') === 'dark';
         const elements = stripe.elements({
             clientSecret: data.clientSecret,
