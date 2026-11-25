@@ -250,7 +250,9 @@ export async function onRequestPost(context) {
         const versandkostenRappen = (hasOnlyGiftCards || freeShipping) ? 0 : 590;
         const bruttoGesamtRappen = itemsSubtotalRappen + versandkostenRappen;
 
-        const codesList = Array.isArray(promoCodes) ? promoCodes : (promoCode ? [promoCode] : []);
+        const codesList = Array.isArray(promoCodes) 
+            ? promoCodes 
+            : (typeof promoCode !== 'undefined' && promoCode ? [promoCode] : []);
 
         for (const rawCode of codesList) {
             if (!rawCode || rawCode.trim() === '') continue;
