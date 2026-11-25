@@ -247,6 +247,10 @@ async function initCheckoutPage() {
             return;
         }
 
+        if (data.appliedCodes && Array.isArray(data.appliedCodes)) {
+            appliedPromoCodesList = data.appliedCodes;
+        }
+
         const itemListContainer = document.getElementById('checkout-item-list');
         const totalPriceContainer = document.getElementById('checkout-total-price');
         const promoMsgContainer = document.getElementById('promo-message');
@@ -318,8 +322,8 @@ async function initCheckoutPage() {
                         headers: headers,
                         body: JSON.stringify({
                             action: 'confirm_free_order',
-                            usedGiftCards: data.usedGiftCards,
-                            promoCodes: data.appliedCodes,
+                            usedGiftCards: data.usedGiftCards || [],
+                            promoCodes: data.appliedCodes || appliedPromoCodesList,
                             freeShipping: isFreeShippingEnabled,
                             rabattWert: data.discount,
                             items: formattedCart,
