@@ -87,11 +87,15 @@ export async function onRequestPost(context) {
             let appliedCodesList = [];
             let giftCardsToDeduct = [];
 
-            const codesArray = Array.isArray(usedGiftCards) ? usedGiftCards : (promoCodes || []);
+            const allPassedCodes = [
+                ...(Array.isArray(usedGiftCards) ? usedGiftCards : []),
+                ...(Array.isArray(promoCodes) ? promoCodes : [])
+            ];
+            const codesArray = [...new Set(allPassedCodes.map(c => c.trim().toUpperCase()))];
             
-            for (const rawCode of codesArray) {
-                const cleanCode = rawCode.trim().toUpperCase();
-                
+            for (const cleanCode of codesArray) {
+                if (!cleanCode) continue;
+
                 const gc = await context.env.DB.prepare(
                     "SELECT * FROM gift_cards WHERE code = ? AND is_active = 1 AND current_balance > 0"
                 ).bind(cleanCode).first();
@@ -122,8 +126,8 @@ export async function onRequestPost(context) {
             verifiedDiscount = Math.min(serverTotal, verifiedDiscount);
             const finalTotal = Math.max(0, serverTotal - verifiedDiscount);
 
-            if (finalTotal > 0.01) {
-                return new Response(JSON.stringify({ error: "Die Bestellung ist nicht kostenlos. Zahlung erforderlich." }), { status: 400 });
+            if (finalTotal > 0.05) {
+                return new Response(JSON.stringify({ error: `Die Bestellung ist nicht kostenlos (Restbetrag: ${finalTotal.toFixed(2)} CHF).` }), { status: 400 });
             }
 
             const orderId = "ORD-" + Date.now();
