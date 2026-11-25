@@ -1,4 +1,6 @@
 let cart = JSON.parse(localStorage.getItem('fabixtech_cart')) || [];
+let appliedPromoCodesList = [];
+let isFreeShippingEnabled = false;
 
 function saveCartToStorage() {
     localStorage.setItem('fabixtech_cart', JSON.stringify(cart));
@@ -92,7 +94,7 @@ function updateCartUI() {
         }
     });
 
-    const versandKosten = hasOnlyGiftCards ? 0.00 : 5.90;
+    const versandKosten = (hasOnlyGiftCards || isFreeShippingEnabled) ? 0.00 : 5.90;
 
     if (countElement) {
         countElement.innerText = anzahlGesamt;
@@ -206,7 +208,7 @@ async function checkout() {
     }
 }
 
-async function initCheckoutPage(promoCode = null) {
+async function initCheckoutPage() {
     const form = document.getElementById('payment-form');
     if (!form) return;
 
@@ -231,7 +233,11 @@ async function initCheckoutPage(promoCode = null) {
         const response = await fetch('/api/checkout', {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify({ cart: formattedCart, promoCode }),
+            body: JSON.stringify({ 
+                cart: formattedCart, 
+                promoCodes: appliedPromoCodesList,
+                freeShipping: isFreeShippingEnabled 
+            }),
         });
 
         const data = await response.json();
@@ -259,9 +265,9 @@ async function initCheckoutPage(promoCode = null) {
                         <span>CHF ${data.shipping.toFixed(2)}</span>
                     </div>`;
 
-            if (data.discount > 0) {
+            if (data.discount > 0 && data.appliedCodes && data.appliedCodes.length > 0) {
                 html += `<div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #16a34a; font-weight: 600;">
-                            <span>Rabatt (${data.appliedCode})</span>
+                            <span>Rabatte (${data.appliedCodes.join(', ')})</span>
                             <span>- CHF ${data.discount.toFixed(2)}</span>
                         </div>`;
             }
@@ -271,9 +277,9 @@ async function initCheckoutPage(promoCode = null) {
         }
 
         if (promoMsgContainer) {
-            if (data.appliedCode) {
+            if (data.appliedCodes && data.appliedCodes.length > 0) {
                 promoMsgContainer.style.color = '#16a34a';
-                promoMsgContainer.innerText = `Aktionscode "${data.appliedCode}" wurde angewendet!`;
+                promoMsgContainer.innerText = `Angewendete Codes: ${data.appliedCodes.join(', ')}`;
             } else {
                 promoMsgContainer.innerText = '';
             }
@@ -284,7 +290,7 @@ async function initCheckoutPage(promoCode = null) {
 
         if (data.freeOrder) {
             if (paymentElementDiv) {
-                paymentElementDiv.innerHTML = '<div style="background: rgba(22, 163, 74, 0.1); border: 1px solid #16a34a; padding: 12px; border-radius: 8px; color: #16a34a; font-weight: 600; text-align: center;">Dein Gutschein deckt den gesamten Betrag ab! Keine Zahlung erforderlich.</div>';
+                paymentElementDiv.innerHTML = '<div style="background: rgba(22, 163, 74, 0.1); border: 1px solid #16a34a; padding: 12px; border-radius: 8px; color: #16a34a; font-weight: 600; text-align: center;">Deine Gutscheine / Rabatte decken den gesamten Betrag ab! Keine Zahlung erforderlich.</div>';
             }
             if (paymentSectionHeading) paymentSectionHeading.style.display = 'none';
 
@@ -312,14 +318,17 @@ async function initCheckoutPage(promoCode = null) {
                         headers: headers,
                         body: JSON.stringify({
                             action: 'confirm_free_order',
-                            usedGiftCard: data.usedGiftCard,
-                            promoCode: data.appliedCode,
+                            usedGiftCards: data.usedGiftCards,
+                            promoCodes: data.appliedCodes,
+                            freeShipping: isFreeShippingEnabled,
                             rabattWert: data.discount,
                             items: formattedCart,
                             shippingAddress: {
-                                name: document.getElementById('name')?.value || '',
+                                firstname: document.getElementById('firstname')?.value || '',
+                                lastname: document.getElementById('lastname')?.value || '',
                                 email: document.getElementById('email')?.value || '',
                                 street: document.getElementById('street')?.value || '',
+                                housenumber: document.getElementById('housenumber')?.value || '',
                                 zip: document.getElementById('zip')?.value || '',
                                 city: document.getElementById('city')?.value || '',
                                 shipping_note: document.getElementById('shipping-note')?.value || ''
@@ -372,8 +381,10 @@ async function initCheckoutPage(promoCode = null) {
             }
 
             const emailInput = document.getElementById('email');
-            const nameInput = document.getElementById('name');
+            const firstnameInput = document.getElementById('firstname');
+            const lastnameInput = document.getElementById('lastname');
             const streetInput = document.getElementById('street');
+            const housenumberInput = document.getElementById('housenumber');
             const zipInput = document.getElementById('zip');
             const cityInput = document.getElementById('city');
             const shippingNoteInput = document.getElementById('shipping-note');
@@ -395,9 +406,9 @@ async function initCheckoutPage(promoCode = null) {
                             action: 'update_metadata',
                             paymentIntentId: paymentIntentId,
                             shippingAddress: {
-                                name: nameInput ? nameInput.value : '',
+                                name: `${firstnameInput ? firstnameInput.value : ''} ${lastnameInput ? lastnameInput.value : ''}`,
                                 email: emailInput ? emailInput.value : '',
-                                street: streetInput ? streetInput.value : '',
+                                street: `${streetInput ? streetInput.value : ''} ${housenumberInput ? housenumberInput.value : ''}`,
                                 zip: zipInput ? zipInput.value : '',
                                 city: cityInput ? cityInput.value : '',
                                 shipping_note: shippingNoteInput ? shippingNoteInput.value : ''
@@ -415,9 +426,9 @@ async function initCheckoutPage(promoCode = null) {
                     return_url: window.location.origin + '/success',
                     receipt_email: emailInput ? emailInput.value : undefined,
                     shipping: {
-                        name: nameInput ? nameInput.value : 'Kunde',
+                        name: `${firstnameInput ? firstnameInput.value : ''} ${lastnameInput ? lastnameInput.value : ''}`,
                         address: {
-                            line1: streetInput ? streetInput.value : '',
+                            line1: `${streetInput ? streetInput.value : ''} ${housenumberInput ? housenumberInput.value : ''}`,
                             postal_code: zipInput ? zipInput.value : '',
                             city: cityInput ? cityInput.value : '',
                             country: 'CH'
@@ -444,6 +455,25 @@ async function initCheckoutPage(promoCode = null) {
         alert("Beim Laden des Zahlungsformulars ist ein Fehler aufgetreten.");
     }
     initSwissZipAutocomplete();
+}
+
+function applyPromoCode() {
+    const input = document.getElementById('promo-code-input');
+    if (input && input.value.trim() !== '') {
+        const code = input.value.trim().toUpperCase();
+        if (!appliedPromoCodesList.includes(code)) {
+            appliedPromoCodesList.push(code);
+        }
+        input.value = '';
+        initCheckoutPage();
+    }
+}
+
+function toggleFreeShipping() {
+    const checkbox = document.getElementById('free-shipping-checkbox');
+    isFreeShippingEnabled = checkbox ? checkbox.checked : false;
+    updateCartUI();
+    initCheckoutPage();
 }
 
 function initSwissZipAutocomplete() {
@@ -474,14 +504,8 @@ function initSwissZipAutocomplete() {
     });
 }
 
-function applyPromoCode() {
-    const input = document.getElementById('promo-code-input');
-    if (input && input.value.trim() !== '') {
-        initCheckoutPage(input.value.trim());
-    }
-}
-
 window.applyPromoCode = applyPromoCode;
+window.toggleFreeShipping = toggleFreeShipping;
 
 function removeFromCart(index) {
     cart.splice(index, 1); 
@@ -508,7 +532,7 @@ function addProductFromCard(buttonElement) {
 
         const activeVariantBtn = box.querySelector('.variant-btn.active');
         const variante = activeVariantBtn ? activeVariantBtn.innerText.trim() : 'Standard';    
-        const id = activeVariantBtn ? activeVariantBtn.getAttribute('data-id') : buttonElement.getAttribute('data-id');
+        const id = activeVariantBtn ? activeToken = activeVariantBtn.getAttribute('data-id') : buttonElement.getAttribute('data-id');
         const maxStock = parseInt(buttonElement.getAttribute('data-max-stock') || "0");
 
         if (isNaN(preis)) {
@@ -564,7 +588,7 @@ window.increaseQuantity = function(productId) {
             const cId = (cartItem.id || '').toLowerCase();
             const cName = (cartItem.name || '').toLowerCase();
             if (cId.includes('gift') || cId.includes('gutschein') || cName.includes('gutschein')) {
-                currentTotalGiftCards += (cartItem.quantity || 1);
+                currentTotalGiftCards += (cartItem.quantity| 1);
             }
         });
 

@@ -216,20 +216,14 @@ export async function onRequestPut({ request, env }) {
                                     </div>
                                 `;
 
-                                await env.EMAIL_SERVICE.fetch(new Request("https://internal/", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        recipient: sub.email,
-                                        subject: "Wieder verfügbar: " + prodTitle + " (" + variantName + ") | FabixTech",
-                                        message: htmlContent
-                                    })
-                                }));
+                                const subject = "Wieder verfügbar: " + prodTitle + " (" + variantName + ") | FabixTech";
+                                
+                                await sendViaWorker(env, sub.email, subject, htmlContent);
+
                             } catch (mailErr) {
                                 console.error("Fehler beim Senden der Benachrichtigungs-Mail an", sub.email, mailErr);
                             }
                         }
-
                         await env.DB.prepare("DELETE FROM stock_notifications WHERE variant_id = ?").bind(v.id).run();
                     }
                 }
@@ -290,5 +284,22 @@ export async function onRequestDelete({ request, env }) {
         return new Response(JSON.stringify({ success: true, message: "Produkt gelöscht!" }), { headers: corsHeaders });
     } catch (err) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    }
+}
+
+async function sendViaWorker(env, recipient, subject, htmlContent) {
+    const emailResponse = await env.EMAIL_SERVICE.fetch(new Request("https://internal/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            recipient: recipient,
+            subject: subject,
+            htmlContent: htmlContent
+        })
+    }));
+
+    const emailResult = await emailResponse.json();
+    if (emailResult.status !== "success") {
+        throw new Error(emailResult.message || "Fehler beim E-Mail-Versand über den Worker");
     }
 }

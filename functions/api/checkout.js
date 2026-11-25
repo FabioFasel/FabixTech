@@ -21,7 +21,7 @@ export async function onRequestPost(context) {
     try {
         const stripe = new Stripe(context.env.STRIPE_SECRET_KEY);
         const requestData = await context.request.json();
-        const { cart: rawCart, items, promoCode, shippingAddress, action, usedGiftCard } = requestData;
+        const { cart: rawCart, items, promoCodes, shippingAddress, action, usedGiftCards, freeShipping } = requestData;
         const cart = rawCart || items;
         const cookieHeader = context.request.headers.get('Cookie') || '';
         const authHeader = context.request.headers.get('Authorization') || '';
@@ -80,38 +80,46 @@ export async function onRequestPost(context) {
             }
 
             const hasOnlyGiftCards = verifiedCart.every(i => i.isGiftCard);
-            const shippingCost = hasOnlyGiftCards ? 0 : 5.90;
+            const shippingCost = (hasOnlyGiftCards || freeShipping) ? 0 : 5.90;
             serverTotal += shippingCost;
 
             let verifiedDiscount = 0;
-            let appliedPromoName = 'Keiner';
+            let appliedCodesList = [];
+            let giftCardsToDeduct = [];
 
-            if (usedGiftCard && usedGiftCard !== 'KEINER') {
-                const gc = await context.env.DB.prepare(
-                    "SELECT current_balance, is_active FROM gift_cards WHERE code = ?"
-                ).bind(usedGiftCard).first();
-
-                if (!gc || gc.is_active === 0 || gc.current_balance <= 0) {
-                    return new Response(JSON.stringify({ error: "Ungültiger oder abgelaufener Gutschein." }), { status: 400 });
-                }
-
-                verifiedDiscount = Math.min(serverTotal, gc.current_balance);
-                appliedPromoName = usedGiftCard;
-            } else if (promoCode && promoCode.trim() !== '') {
-                const cleanCode = promoCode.trim().toUpperCase();
-                const promo = await context.env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(cleanCode).first();
+            const codesArray = Array.isArray(usedGiftCards) ? usedGiftCards : (promoCodes || []);
+            
+            for (const rawCode of codesArray) {
+                const cleanCode = rawCode.trim().toUpperCase();
                 
-                if (promo) {
-                    if (promo.type === 'percent') {
-                        verifiedDiscount = (itemsSubtotal * promo.value) / 100;
-                    } else if (promo.type === 'fixed') {
-                        verifiedDiscount = promo.value;
+                const gc = await context.env.DB.prepare(
+                    "SELECT * FROM gift_cards WHERE code = ? AND is_active = 1 AND current_balance > 0"
+                ).bind(cleanCode).first();
+
+                if (gc) {
+                    const remainingNeeded = serverTotal - verifiedDiscount;
+                    if (remainingNeeded <= 0) break;
+                    
+                    const takeAmount = Math.min(remainingNeeded, gc.current_balance);
+                    verifiedDiscount += takeAmount;
+                    giftCardsToDeduct.push({ code: cleanCode, amount: takeAmount });
+                    appliedCodesList.push(cleanCode);
+                } else {
+                    const promo = await context.env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(cleanCode).first();
+                    if (promo) {
+                        let promoDisc = 0;
+                        if (promo.type === 'percent') {
+                            promoDisc = (itemsSubtotal * promo.value) / 100;
+                        } else if (promo.type === 'fixed') {
+                            promoDisc = promo.value;
+                        }
+                        verifiedDiscount += promoDisc;
+                        appliedCodesList.push(cleanCode);
                     }
-                    verifiedDiscount = Math.min(serverTotal, verifiedDiscount);
-                    appliedPromoName = cleanCode;
                 }
             }
 
+            verifiedDiscount = Math.min(serverTotal, verifiedDiscount);
             const finalTotal = Math.max(0, serverTotal - verifiedDiscount);
 
             if (finalTotal > 0.01) {
@@ -119,27 +127,29 @@ export async function onRequestPost(context) {
             }
 
             const orderId = "ORD-" + Date.now();
+            const fullAddressStr = `${shippingAddress.street} ${shippingAddress.housenumber}, ${shippingAddress.zip} ${shippingAddress.city}, CH`;
+            const promoString = appliedCodesList.length > 0 ? appliedCodesList.join(', ') : 'Keiner';
             
             await context.env.DB.prepare(`
                 INSERT INTO orders (id, customer_name, customer_email, shipping_address, total_amount, discount_amount, promo_code, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'offen')
             `).bind(
                 orderId,
-                shippingAddress.name,
+                `${shippingAddress.firstname} ${shippingAddress.lastname}`,
                 shippingAddress.email,
-                `${shippingAddress.street}, ${shippingAddress.zip} ${shippingAddress.city}`,
+                fullAddressStr,
                 finalTotal,
                 verifiedDiscount,
-                appliedPromoName
+                promoString
             ).run();
 
-            if (usedGiftCard && usedGiftCard !== 'KEINER' && verifiedDiscount > 0) {
+            for (const gcUsed of giftCardsToDeduct) {
                 await context.env.DB.prepare(`
                     UPDATE gift_cards 
                     SET current_balance = MAX(0, current_balance - ?),
                         is_active = CASE WHEN (current_balance - ?) <= 0 THEN 0 ELSE 1 END
                     WHERE code = ?
-                `).bind(verifiedDiscount, verifiedDiscount, usedGiftCard).run();
+                `).bind(gcUsed.amount, gcUsed.amount, gcUsed.code).run();
             }
 
             for (const item of verifiedCart) {
@@ -168,23 +178,17 @@ export async function onRequestPost(context) {
                                 "SELECT code FROM gift_cards WHERE code = ?"
                             ).bind(giftCode).first();
 
-                            if (!existing) {
-                                isUnique = true;
-                            } else {
-                                maxAttempts--;
-                            }
+                            if (!existing) isUnique = true;
+                            else maxAttempts--;
                         }
 
                         const cardValue = parseFloat(item.price);
-
                         try {
                             await context.env.DB.prepare(`
                                 INSERT INTO gift_cards (code, initial_balance, current_balance, purchased_by, order_id)
                                 VALUES (?, ?, ?, ?, ?)
                             `).bind(giftCode, cardValue, cardValue, shippingAddress.email, orderId).run();
-                        } catch (gcErr) {
-                            console.error("Fehler beim Erstellen der Geschenkkarte:", gcErr);
-                        }
+                        } catch (gcErr) {}
                     }
                 } else if (!ignoreStock) {
                     if (item.id && item.quantity) {
@@ -240,38 +244,47 @@ export async function onRequestPost(context) {
         }
         
         let rabattRappen = 0;
-        let angewendeterCode = null;
-        let usedGiftCardCode = null;
+        let angewendeteCodes = [];
+        let usedGiftCardsList = [];
 
-        const versandkostenRappen = hasOnlyGiftCards ? 0 : 590;
+        const versandkostenRappen = (hasOnlyGiftCards || freeShipping) ? 0 : 590;
         const bruttoGesamtRappen = itemsSubtotalRappen + versandkostenRappen;
 
-        if (promoCode && promoCode.trim() !== '') {
-            const cleanCode = promoCode.trim().toUpperCase();
+        const codesList = Array.isArray(promoCodes) ? promoCodes : (promoCode ? [promoCode] : []);
+
+        for (const rawCode of codesList) {
+            if (!rawCode || rawCode.trim() === '') continue;
+            const cleanCode = rawCode.trim().toUpperCase();
             
             const giftCard = await context.env.DB.prepare(
                 "SELECT * FROM gift_cards WHERE code = ? AND is_active = 1 AND current_balance > 0"
             ).bind(cleanCode).first();
 
             if (giftCard) {
-                const giftCardBalanceRappen = Math.round(giftCard.current_balance * 100);
-                rabattRappen = Math.min(bruttoGesamtRappen, giftCardBalanceRappen);
-                angewendeterCode = cleanCode;
-                usedGiftCardCode = cleanCode;
+                const gcBalRappen = Math.round(giftCard.current_balance * 100);
+                const remainingBrutto = bruttoGesamtRappen - rabattRappen;
+                if (remainingBrutto <= 0) break;
+
+                const takeRappen = Math.min(remainingBrutto, gcBalRappen);
+                rabattRappen += takeRappen;
+                angewendeteCodes.push(cleanCode);
+                usedGiftCardsList.push(cleanCode);
             } else {
                 const promo = await context.env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(cleanCode).first();
-                if (!promo) return new Response(JSON.stringify({ error: 'Code ungültig.' }), { status: 400 });
-
-                if (promo.type === 'percent') {
-                    rabattRappen = Math.round((itemsSubtotalRappen * promo.value) / 100);
-                } else if (promo.type === 'fixed') {
-                    rabattRappen = Math.round(promo.value * 100);
+                if (promo) {
+                    let promoRappen = 0;
+                    if (promo.type === 'percent') {
+                        promoRappen = Math.round((itemsSubtotalRappen * promo.value) / 100);
+                    } else if (promo.type === 'fixed') {
+                        promoRappen = Math.round(promo.value * 100);
+                    }
+                    rabattRappen += promoRappen;
+                    angewendeteCodes.push(cleanCode);
                 }
-                rabattRappen = Math.min(bruttoGesamtRappen, rabattRappen);
-                angewendeterCode = cleanCode;
             }
         }
 
+        rabattRappen = Math.min(bruttoGesamtRappen, rabattRappen);
         let totalAmountRappen = bruttoGesamtRappen - rabattRappen;
         
         if (totalAmountRappen === 0) {
@@ -281,8 +294,8 @@ export async function onRequestPost(context) {
                 discount: rabattRappen / 100,
                 shipping: versandkostenRappen / 100,
                 total: 0,
-                appliedCode: angewendeterCode,
-                usedGiftCard: usedGiftCardCode
+                appliedCodes: angewendeteCodes,
+                usedGiftCards: usedGiftCardsList
             }), { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
 
@@ -291,14 +304,14 @@ export async function onRequestPost(context) {
         }
 
         const formattedAddress = shippingAddress 
-            ? `${shippingAddress.street}, ${shippingAddress.zip} ${shippingAddress.city}, CH`
+            ? `${shippingAddress.street} ${shippingAddress.housenumber}, ${shippingAddress.zip} ${shippingAddress.city}, CH`
             : '';
 
         const sessionMetadata = {
-            promoCode: angewendeterCode || 'Keiner',
-            usedGiftCard: usedGiftCardCode || '',
+            promoCode: angewendeteCodes.length > 0 ? angewendeteCodes.join(', ') : 'Keiner',
+            usedGiftCard: usedGiftCardsList.join(','),
             rabatt: `${(rabattRappen / 100).toFixed(2)} CHF`,
-            customer_name: shippingAddress?.name || '',
+            customer_name: shippingAddress ? `${shippingAddress.firstname} ${shippingAddress.lastname}` : '',
             customer_email: customerEmail,
             shipping_address: formattedAddress,
             shipping_note: shippingAddress?.shipping_note || '',
@@ -322,8 +335,8 @@ export async function onRequestPost(context) {
             automatic_payment_methods: { enabled: true },
             metadata: sessionMetadata,
             shipping: shippingAddress && !hasOnlyGiftCards ? {
-                name: shippingAddress.name,
-                address: { line1: shippingAddress.street, postal_code: shippingAddress.zip, city: shippingAddress.city, country: 'CH' }
+                name: `${shippingAddress.firstname} ${shippingAddress.lastname}`,
+                address: { line1: `${shippingAddress.street} ${shippingAddress.housenumber}`, postal_code: shippingAddress.zip, city: shippingAddress.city, country: 'CH' }
             } : undefined
         });
 
@@ -333,8 +346,8 @@ export async function onRequestPost(context) {
             discount: rabattRappen / 100,
             shipping: versandkostenRappen / 100,
             total: totalAmountRappen / 100,
-            appliedCode: angewendeterCode,
-            usedGiftCard: usedGiftCardCode
+            appliedCodes: angewendeteCodes,
+            usedGiftCards: usedGiftCardsList
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
     } catch (error) {

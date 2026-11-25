@@ -135,6 +135,56 @@
             box-shadow: 0 0 0 1px #d40202, 0 0 6px rgba(212, 2, 2, 0.2);
         }
 
+        /* Rote Checkbox für Gratis-Versand */
+        .custom-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .custom-checkbox-group input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            background-color: var(--input-bg);
+            display: grid;
+            place-content: center;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .custom-checkbox-group input[type="checkbox"]::before {
+            content: "";
+            width: 10px;
+            height: 6px;
+            border-left: 2px solid white;
+            border-bottom: 2px solid white;
+            transform: rotate(-45deg) scale(0);
+            transition: transform 0.1s ease-in-out;
+            margin-top: -2px;
+        }
+
+        .custom-checkbox-group input[type="checkbox"]:checked {
+            background-color: #d40202;
+            border-color: #d40202;
+        }
+
+        .custom-checkbox-group input[type="checkbox"]:checked::before {
+            transform: rotate(-45deg) scale(1);
+        }
+
+        .custom-checkbox-group input[type="checkbox"]:hover {
+            border-color: #d40202;
+        }
+
         .pay-btn {
             width: 100%;
             background-color: #d40202;
@@ -176,12 +226,13 @@
                     <span>Deine Bestellung</span>
                 </h3>
                 <div id="checkout-item-list" style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);"></div>
+                
                 <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-                    <input type="text" id="promo-code-input" class="form-control" placeholder="Aktionscode eingeben" style="flex: 1; text-transform: uppercase;">
-                    <button type="button" id="apply-promo-btn" onclick="applyPromoCode()" style="background: #d40202; color: #ffffff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600;">Einlösen</button>
+                    <input type="text" id="promo-code-input" class="form-control" placeholder="Gutschein / Aktionscode eingeben" style="flex: 1; text-transform: uppercase;">
+                    <button type="button" id="apply-promo-btn" onclick="applyPromoCode()" style="background: #d40202; color: #ffffff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600;">Hinzufügen</button>
                 </div>
                 <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-                    * Gilt ausschliesslich für Produktkosten (exkl. CHF 5.90 Versandkosten).
+                    * Du kannst mehrere Codes nacheinander hinzufügen.
                 </div>
                 <div id="promo-message" style="font-size: 12px; margin-bottom: 12px; font-weight: 500;"></div>
                 <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; color: var(--text-main); border-top: 1px solid var(--border-color); padding-top: 12px;">
@@ -195,13 +246,25 @@
                     <label for="email">E-Mail</label>
                     <input type="email" id="email" class="form-control" placeholder="email@beispiel.ch" required>
                 </div>
-                <div class="form-group">
-                    <label for="name">Vollständiger Name</label>
-                    <input type="text" id="name" class="form-control" placeholder="Dein Name" required>
+                <div style="display: flex; gap: 12px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="firstname">Vorname</label>
+                        <input type="text" id="firstname" class="form-control" placeholder="Max" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="lastname">Nachname</label>
+                        <input type="text" id="lastname" class="form-control" placeholder="Mustermann" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="street">Strasse & Hausnummer</label>
-                    <input type="text" id="street" class="form-control" placeholder="Musterstrasse 12" required minlength="4">
+                <div style="display: flex; gap: 12px;">
+                    <div class="form-group" style="flex: 3;">
+                        <label for="street">Strasse</label>
+                        <input type="text" id="street" class="form-control" placeholder="Musterstrasse" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="housenumber">Nr.</label>
+                        <input type="text" id="housenumber" class="form-control" placeholder="12" required>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 12px;">
                     <div class="form-group" style="flex: 1;">
@@ -220,6 +283,11 @@
                     <label for="shipping-note">Bemerkung für die Lieferung (optional)</label>
                     <input type="text" id="shipping-note" class="form-control" placeholder="z.B. Im 2. Stock, bei Klingel Mustermann">
                 </div>
+
+                <label class="custom-checkbox-group">
+                    <input type="checkbox" id="free-shipping-checkbox" onchange="toggleFreeShipping()">
+                    <span style="color: var(--text-main);">Abholung bei Waldweg 1</span>
+                </label>
 
                 <h3 class="section-heading" style="margin-top: 20px;">Zahlungsmethode</h3>
                 <div id="payment-element"></div>

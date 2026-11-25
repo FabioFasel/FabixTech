@@ -28,16 +28,9 @@ export async function onRequestPost(context) {
         `;
 
         const emailPayload = {
-            from: "FabixTech Kontakt <noreply@fabixtech.ch>",
-            to: "support@fabixtech.ch",
-            reply_to: email,
-            replyTo: email,
+            recipient: "support@fabixtech.ch",
             subject: `[Kontaktformular] ${subject}`,
-            html: formattedHtml,
-            htmlContent: formattedHtml,
-            body: formattedHtml,
-            content: formattedHtml,
-            text: `Absender: ${email}\nBetreff: ${subject}\n\n${message}`
+            htmlContent: formattedHtml
         };
 
         const res = await env.EMAIL_SERVICE.fetch("https://internal/send", {
@@ -46,9 +39,10 @@ export async function onRequestPost(context) {
             body: JSON.stringify(emailPayload)
         });
 
-        if (!res.ok) {
-            const errorDetail = await res.text();
-            return new Response(JSON.stringify({ error: `Worker-Fehler (${res.status}): ${errorDetail}` }), {
+        const emailResult = await res.json().catch(() => ({}));
+
+        if (!res.ok || emailResult.status === "error") {
+            return new Response(JSON.stringify({ error: emailResult.message || "Fehler beim E-Mail-Versand" }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
             });
