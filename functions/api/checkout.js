@@ -172,7 +172,7 @@ export async function onRequestPost(context) {
 
                         while (!isUnique && maxAttempts > 0) {
                             const randomPart = crypto.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase();
-                            giftCode = `FABIO-${randomPart.substring(0,4)}-${randomPart.substring(4,8)}`;
+                            giftCode = `FABIX-${randomPart.substring(0,4)}-${randomPart.substring(4,8)}`;
 
                             const existing = await context.env.DB.prepare(
                                 "SELECT code FROM gift_cards WHERE code = ?"
