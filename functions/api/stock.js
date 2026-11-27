@@ -54,28 +54,31 @@ export async function onRequestPost(context) {
 
     try {
         const body = await request.json();
+        const { variantId, stock, deliveryTime, ignoreStock } = body;
 
-        if (body.action === 'toggle_ignore_stock') {
-            const val = body.ignoreStock ? 'true' : 'false';
-            await env.DB.prepare(`
-                INSERT INTO settings (key, value)
-                VALUES ('ignore_stock', ?)
-                ON CONFLICT(key) DO UPDATE SET value = excluded.value
-            `).bind(val).run();
-
-            return new Response(JSON.stringify({ success: true, ignoreStock: body.ignoreStock }), { headers: corsHeaders });
+        if (!variantId) {
+            return new Response(JSON.stringify({ error: "Variant ID fehlt." }), { status: 400, headers: corsHeaders });
         }
 
-        const { variantId, stock, deliveryTime } = body;
-        
-        if (deliveryTime !== undefined && stock !== undefined) {
-            const newStock = parseInt(stock) || 0;
-            await env.DB.prepare("UPDATE product_variants SET stock = ?, delivery_time = ? WHERE id = ?").bind(newStock, deliveryTime, variantId).run();
-        } else if (stock !== undefined) {
-            const newStock = parseInt(stock) || 0;
-            await env.DB.prepare("UPDATE product_variants SET stock = ? WHERE id = ?").bind(newStock, variantId).run();
-        } else if (deliveryTime !== undefined) {
-            await env.DB.prepare("UPDATE product_variants SET delivery_time = ? WHERE id = ?").bind(deliveryTime, variantId).run();
+        const updates = [];
+        const params = [];
+
+        if (stock !== undefined) {
+            updates.push("stock = ?");
+            params.push(parseInt(stock) || 0);
+        }
+        if (deliveryTime !== undefined) {
+            updates.push("delivery_time = ?");
+            params.push(deliveryTime);
+        }
+        if (ignoreStock !== undefined) {
+            updates.push("ignore_stock = ?");
+            params.push(ignoreStock ? 1 : 0);
+        }
+
+        if (updates.length > 0) {
+            params.push(variantId);
+            await env.DB.prepare(`UPDATE product_variants SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
         }
 
         if (stock !== undefined) {
@@ -112,13 +115,13 @@ export async function onRequestPost(context) {
                                 </div>
                             `;
 
-                            await env.EMAIL_SERVICE.fetch(new Request("https://internal/", {
+                            await env.EMAIL_SERVICE.fetch(new Request("https://internal/send", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
                                     recipient: sub.email,
                                     subject: "Wieder verfügbar: " + prodTitle + " (" + variantName + ") | FabixTech",
-                                    message: htmlContent
+                                    htmlContent: htmlContent
                                 })
                             }));
                         } catch (mailErr) {
@@ -132,7 +135,6 @@ export async function onRequestPost(context) {
         }
         
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
-    
     } catch (err) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
     }

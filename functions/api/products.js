@@ -56,6 +56,7 @@ export async function onRequestGet({ request, env }) {
                     name: v.name,
                     price: v.price,
                     stock: v.stock || 0,
+                    ignoreStock: v.ignore_stock === 1 || v.ignore_stock === true,
                     material: v.material || '',
                     quality: v.quality || '',
                     infill: v.infill || '',

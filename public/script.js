@@ -149,28 +149,30 @@ function updatePrice(button) {
 }
 
 async function fetchAllStocks() {
-    const [stocks, ignoreStock] = await Promise.all([stockPromise, stockSettingsPromise]);
-    
+    const stocks = await stockPromise;
+
     const stockMap = {};
+    const ignoreStockMap = {};
     if (Array.isArray(stocks)) {
         stocks.forEach(item => {
-            const stockValue = item.maxStock !== undefined ? item.maxStock : item.stock;
-            stockMap[item.id] = parseInt(stockValue) || 0;
+            stockMap[item.id] = parseInt(item.stock) || 0;
+            ignoreStockMap[item.id] = item.ignore_stock === 1;
         });
     }
 
     document.querySelectorAll('.variant-btn').forEach(btn => {
         const productId = btn.getAttribute('data-id');
-        if (ignoreStock) {
+        const isIgnored = ignoreStockMap[productId];
+
+        btn.setAttribute('data-ignore-stock', isIgnored ? '1' : '0');
+
+        if (isIgnored) {
             btn.style.opacity = '1';
             btn.style.textDecoration = 'none';
-            if (productId in stockMap) {
-                btn.setAttribute('data-stock', stockMap[productId]);
-            }
         } else if (productId in stockMap) {
             const stock = stockMap[productId];
             btn.setAttribute('data-stock', stock);
-            
+
             if (stock <= 0) {
                 btn.style.opacity = '0.4';
                 btn.style.textDecoration = 'line-through';
@@ -190,10 +192,12 @@ function updateMainButtonStock(produktKarte) {
     const activeVariantBtn = produktKarte.querySelector('.variant-btn.active');
     const cartButton = produktKarte.querySelector('.btn-buy');
     const alertBox = document.getElementById('stock-alert-box');
-    
+
     if (!activeVariantBtn || !cartButton) return;
 
-    if (window.ignoreStockSystem) {
+    const isIgnored = activeVariantBtn.getAttribute('data-ignore-stock') === '1';
+
+    if (isIgnored) {
         cartButton.disabled = false;
         cartButton.innerText = "In den Warenkorb";
         cartButton.setAttribute('data-max-stock', '9999');
@@ -201,9 +205,9 @@ function updateMainButtonStock(produktKarte) {
         return;
     }
 
-    const stockAttr = activeVariantBtn.getAttribute('data-stock') || activeVariantBtn.getAttribute('data-max-stock') || "0";
+    const stockAttr = activeVariantBtn.getAttribute('data-stock') || "0";
     const aktuellerBestand = parseInt(stockAttr);
-    
+
     if (aktuellerBestand <= 0) {
         cartButton.disabled = true;
         cartButton.innerText = "Ausverkauft";

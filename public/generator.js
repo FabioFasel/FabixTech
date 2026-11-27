@@ -109,6 +109,7 @@ function renderProductCards(products) {
                     data-variant-images="${v.images.join(', ')}" 
                     data-price="${v.price}" 
                     data-id="${v.id}" 
+                    data-ignore-stock="${v.ignoreStock ? '1' : '0'}"
                     onclick="jumpToSlide(this, ${index}); updatePrice(this)">
                 ${v.name}
             </button>

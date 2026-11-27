@@ -194,8 +194,14 @@ export async function onRequestPost(context) {
                             `).bind(giftCode, cardValue, cardValue, shippingAddress.email, orderId).run();
                         } catch (gcErr) {}
                     }
-                } else if (!ignoreStock) {
-                    if (item.id && item.quantity) {
+                } else {
+                    const variantData = await context.env.DB.prepare(
+                        "SELECT COALESCE(ignore_stock, 0) AS ignore_stock FROM product_variants WHERE id = ?"
+                    ).bind(item.id).first();
+                    
+                    const ignoreThisStock = variantData && variantData.ignore_stock === 1;
+
+                    if (!ignoreThisStock && item.id && item.quantity) {
                         await context.env.DB.prepare(
                             "UPDATE product_variants SET stock = stock - ? WHERE id = ?"
                         ).bind(item.quantity, item.id).run();
@@ -219,14 +225,17 @@ export async function onRequestPost(context) {
             const kundenMenge = parseInt(item.quantity) || 1;
             if (!variantId) continue;
 
-            const result = await context.env.DB.prepare("SELECT stock, price FROM product_variants WHERE id = ?").bind(variantId).first();
+            const result = await context.env.DB.prepare(
+                "SELECT stock, price, COALESCE(ignore_stock, 0) AS ignore_stock FROM product_variants WHERE id = ?"
+            ).bind(variantId).first();
             if (!result) return new Response(JSON.stringify({ error: `Produkt nicht gefunden.` }), { status: 400 });
 
             const aktuellerBestand = parseInt(result.stock) || 0;
+            const ignoreThisStock = result.ignore_stock === 1;
             const echterPreisFranken = parseFloat(result.price) || 0;
             const echterPreisRappen = Math.round(echterPreisFranken * 100);
 
-            if (!ignoreStock && aktuellerBestand < kundenMenge) {
+            if (!ignoreThisStock && aktuellerBestand < kundenMenge) {
                 return new Response(JSON.stringify({ error: `Produkt "${item.name}" ausverkauft.` }), { status: 400 });
             }
 

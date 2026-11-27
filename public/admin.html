@@ -840,7 +840,7 @@
     async function loadStockManager() {
         const container = document.getElementById('stock-manager-list');
         try {
-            const res = await fetch('/api/products');
+            const res = await fetch('/api/products?all=true');
             const products = await res.json();
 
             let html = `<table style="width:100%; border-collapse:collapse; font-size:14px;">
@@ -849,6 +849,7 @@
                         <th style="padding:8px;">Variante</th>
                         <th style="padding:8px;">Produkt</th>
                         <th style="padding:8px;">Bestand</th>
+                        <th style="padding:8px; text-align:center;">Bestand ignorieren</th>
                         <th style="padding:8px;">Lieferzeit</th>
                         <th style="padding:8px;">Aktion</th>
                     </tr>
@@ -863,6 +864,9 @@
                             <td style="padding:8px;">${p.title}</td>
                             <td style="padding:8px;">
                                 <input type="number" id="stock-input-${v.id}" value="${v.stock || 0}" style="width:70px; padding:6px; border-radius:4px; border:1px solid var(--border);">
+                            </td>
+                            <td style="padding:8px; text-align:center;">
+                                <input type="checkbox" id="ignore-stock-input-${v.id}" ${v.ignoreStock ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
                             </td>
                             <td style="padding:8px;">
                                 <input type="text" id="delivery-input-${v.id}" value="${v.delivery_time || '2-3 Werktage'}" style="width:140px; padding:6px; border-radius:4px; border:1px solid var(--border);">
@@ -882,18 +886,19 @@
     }
 
     async function updateVariantStock(variantId) {
-        const newStock = document.getElementById(`stock-input-${variantId}`).value;
-        const newDelivery = document.getElementById(`delivery-input-${variantId}`).value;
+        const stock = document.getElementById(`stock-input-${variantId}`).value;
+        const ignoreStock = document.getElementById(`ignore-stock-input-${variantId}`).checked;
+        const deliveryTime = document.getElementById(`delivery-input-${variantId}`).value;
 
         try {
             const res = await fetch('/api/stock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ variantId, stock: newStock, deliveryTime: newDelivery })
+                body: JSON.stringify({ variantId, stock, ignoreStock, deliveryTime })
             });
 
             if (res.ok) {
-                alert("Bestand & Lieferzeit erfolgreich aktualisiert!");
+                alert("Bestand & Einstellungen erfolgreich aktualisiert!");
             } else {
                 alert("Fehler beim Speichern.");
             }
@@ -1267,6 +1272,11 @@
                             <div><strong>Kunde:</strong> ${order.customer_name || 'Kein Name'} (${order.customer_email || 'Keine E-Mail'})</div>
                             <div><strong>Adresse:</strong> ${order.shipping_address || 'Keine Adresse angegeben'}</div>
                             ${order.shipping_note ? `<div style="margin-top: 6px; color: var(--primary);"><strong>Lieferhinweis:</strong> ${order.shipping_note}</div>` : ''}
+                            
+                            <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                                <input type="text" id="tracking-input-${order.id}" value="${order.tracking_number || ''}" placeholder="Post Sendungsnummer eingeben" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); font-size: 13px; flex-grow: 1;">
+                                <button type="button" onclick="updateTrackingNumber('${order.id}')" style="padding: 6px 12px; font-size: 12px;">Tracking speichern</button>
+                            </div>
                         </div>
 
                         <ul style="background:var(--bg-body); padding:12px; border-radius:6px; list-style:none; margin:0;">
@@ -1596,6 +1606,31 @@ async function saveSectionOrder() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         loadSectionsAdmin();
+    }
+
+    async function updateTrackingNumber(orderId) {
+        const trackingNumber = document.getElementById(`tracking-input-${orderId}`).value.trim();
+        const token = getSessionToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            const res = await fetch('/api/orders', {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify({ orderId, trackingNumber })
+            });
+
+            if (res.ok) {
+                alert(`Sendungsnummer für Bestellung #${orderId} erfolgreich gespeichert!`);
+            } else {
+                const err = await res.json();
+                alert("Fehler beim Speichern: " + (err.message || err.error || "Unbekannter Fehler"));
+            }
+        } catch (e) {
+            console.error("Fehler:", e);
+            alert("Verbindungsfehler zum Server.");
+        }
     }
     </script>
 <script src="/script.js" defer></script>
