@@ -335,22 +335,25 @@ export async function onRequestGet(context) {
 
     let giftCardCardsHtml = '';
     if (generatedGiftCards.length > 0) {
-        giftCardCardsHtml = generatedGiftCards.map(gc => `
-            <div class="gift-card-box">
-                <div class="gift-card-brand">Fabix<span>Tech</span></div>
-                <div class="gift-card-subtitle">DIGITALER GESCHENKGUTSCHEIN</div>
-                
-                <div class="gift-card-code-wrapper">
-                    <span class="gift-card-code">${gc.code}</span>
-                </div>
-                
-                <div class="gift-card-amount">Wert: CHF ${Number(gc.value).toFixed(2)}</div>
-                <div class="gift-card-footer-text">Einlösbar im Checkout auf fabixtech.ch</div>
+        giftCardCardsHtml = `
+            <div id="print-voucher-area">
+                ${generatedGiftCards.map(gc => `
+                    <div class="gift-card-box">
+                        <div class="gift-card-brand">Fabix<span>Tech</span></div>
+                        <div class="gift-card-subtitle">DIGITALER GESCHENKGUTSCHEIN</div>
+                        
+                        <div class="gift-card-code-wrapper">
+                            <span class="gift-card-code">${gc.code}</span>
+                        </div>
+                        
+                        <div class="gift-card-amount">Wert: CHF ${Number(gc.value).toFixed(2)}</div>
+                        <div class="gift-card-footer-text">Einlösbar im Checkout auf fabixtech.ch</div>
+                    </div>
+                `).join('')}
             </div>
-        `).join('') + `
             <div class="no-print" style="text-align: center; margin-bottom: 20px;">
                 <button onclick="window.print()" class="btn-print">
-                    Gutschein als PDF / Papier drucken
+                    Gutscheine als PDF / Papier drucken
                 </button>
             </div>
         `;
@@ -476,6 +479,8 @@ export async function onRequestGet(context) {
                 margin: 20px 0;
                 border: 2px solid var(--gc-border);
                 box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
 
             .gift-card-brand { 
@@ -522,6 +527,31 @@ export async function onRequestGet(context) {
                 font-size: 11px; 
                 color: var(--text-muted); 
                 margin-top: 4px; 
+            }
+
+            @media print {
+                body * {
+                    visibility: hidden;
+                }
+                #print-voucher-area, #print-voucher-area * {
+                    visibility: visible;
+                }
+                #print-voucher-area {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                }
+                .no-print {
+                    display: none !important;
+                }
+                .gift-card-box {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    margin-bottom: 30px;
+                    border: 2px solid #000000 !important;
+                    box-shadow: none;
+                }
             }
         </style>
     </head>
