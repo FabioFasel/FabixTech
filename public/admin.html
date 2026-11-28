@@ -1770,6 +1770,7 @@ async function saveSectionOrder() {
                         .address-row {
                             display: flex;
                             justify-content: space-between;
+                            align-items: flex-start;
                             margin-bottom: 28px;
                             gap: 20px;
                         }
@@ -1778,24 +1779,22 @@ async function saveSectionOrder() {
                             flex: 1;
                         }
 
-                        .sender-mini {
-                            font-size: 10px;
-                            color: #64748b;
-                            text-decoration: underline;
-                            margin-bottom: 6px;
-                        }
-
                         .meta-box {
-                            background: #f8fafc;
-                            border: 1px solid #e2e8f0;
+                            background: transparent;
+                            border: 1px solid #cbd5e1;
                             border-radius: 8px;
-                            padding: 12px 16px;
-                            min-width: 230px;
+                            padding: 10px 14px;
+                            min-width: 220px;
                             font-size: 12px;
+                            line-height: 1.4;
                         }
 
                         .meta-box div {
-                            margin-bottom: 4px;
+                            margin-bottom: 2px;
+                        }
+
+                        .meta-box div:last-child {
+                            margin-bottom: 0;
                         }
 
                         h1 {
@@ -1839,7 +1838,7 @@ async function saveSectionOrder() {
                             padding-top: 8px;
                             font-size: 15px;
                             font-weight: bold;
-                            color: #d40202;
+                            color: #0f172a;
                         }
 
                         .info-boxes {
@@ -1850,21 +1849,26 @@ async function saveSectionOrder() {
                             page-break-inside: avoid;
                         }
 
-                        .notice-box {
+                        .simple-box {
                             border: 1px solid #cbd5e1;
-                            background: #f8fafc;
+                            background: transparent;
                             border-radius: 8px;
                             padding: 12px 14px;
                             font-size: 12px;
+                            color: #334155;
                         }
 
-                        .warning-box {
-                            border: 1.5px solid #d40202;
-                            background: #fef2f2;
-                            border-radius: 8px;
-                            padding: 12px 14px;
-                            font-size: 12px;
-                            color: #7f1d1d;
+                        .simple-box strong {
+                            color: #0f172a;
+                        }
+
+                        .simple-box ul {
+                            margin: 4px 0 0 16px;
+                            padding: 0;
+                        }
+
+                        .simple-box li {
+                            margin-bottom: 2px;
                         }
 
                         .footer-thanks {
@@ -1921,7 +1925,6 @@ async function saveSectionOrder() {
 
                         <div class="address-row">
                             <div class="customer-box">
-                                <div class="sender-mini">${SENDER_INFO.company} • ${SENDER_INFO.street} • ${SENDER_INFO.zipCity}</div>
                                 <strong style="font-size: 15px;">${order.customer_name || 'Kunde'}</strong><br>
                                 ${(order.shipping_address || 'Keine Adresse hinterlegt').replace(/,\s*/g, '<br>')}<br>
                                 <span style="color: #475569; font-size: 12px; display: inline-block; margin-top: 6px;">
@@ -1974,18 +1977,20 @@ async function saveSectionOrder() {
                         </div>
 
                         <div class="info-boxes">
-                            <div class="notice-box">
-                                <strong>Material & Pflegehinweise:</strong><br>
-                                3D gedruckt aus <strong>${materials}</strong>. Nicht spülmaschinenfest. Vor direkter, starker Hitze (über 50 °C) und dauerhafter direkter Sonneneinstrahlung schützen, um Verformungen zu vermeiden.
+                            <div class="simple-box">
+                                <strong>Material & Pflegehinweise</strong><br>
+                                3D-gedruckt aus <strong>${materials}</strong>. Nicht spülmaschinenfest. Vor direkter, starker Hitze (über 50 °C) und dauerhafter direkter Sonneneinstrahlung schützen, um Verformungen zu vermeiden.
                             </div>
 
-                            <div class="warning-box">
-                                <strong>Sicherheit & Warnhinweise:</strong><br>
-                                • <strong>Achtung:</strong> Nicht für Kinder unter 3 Jahren geeignet. Enthält verschluckbare Kleinteile (Erstickungsgefahr).<br>
-                                • Nicht Lebensmittelecht. Kontakt mit Lebensmitteln vermeiden.
-                                • Elektronik und Batterien von Feuchtigkeit fernhalten. Batterien gehören nicht in den Hausmüll.
-                                • Bei unsachgemässer Handhabung, Überhitzung oder Überbelastung besteht kein Anspruch auf Garantie oder Ersatz.
-                                • Feine Schichlinien und Oberflächenstrukturen sind normal und stellen keine Mängel dar.
+                            <div class="simple-box">
+                                <strong>Sicherheit & Hinweise</strong>
+                                <ul>
+                                    <li><strong>Achtung:</strong> Nicht für Kinder unter 3 Jahren geeignet. Enthält verschluckbare Kleinteile (Erstickungsgefahr).</li>
+                                    <li>Nicht lebensmittelecht. Kontakt mit Lebensmitteln vermeiden.</li>
+                                    <li>Elektronik und Batterien von Feuchtigkeit fernhalten. Batterien gehören nicht in den Hausmüll.</li>
+                                    <li>Bei unsachgemässer Handhabung, Überhitzung oder Überbelastung besteht kein Anspruch auf Garantie oder Ersatz.</li>
+                                    <li>Feine Schichtlinien und Oberflächenstrukturen sind normal und stellen keinen Mängel dar.</li>
+                                </ul>
                             </div>
                         </div>
 
