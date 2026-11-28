@@ -1246,12 +1246,17 @@
 
                 container.innerHTML += `
                     <div class="order-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
                             <div>
                                 <strong style="font-size:16px;">Bestellung #${order.id}</strong>
                                 ${formattedDate ? `<div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${formattedDate}</div>` : ''}
                             </div>
-                            ${statusSelectHtml}
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <button type="button" onclick="generateDeliveryNote('${order.id}')" style="background:#334155; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-file-pdf"></i> Lieferschein
+                                </button>
+                                ${statusSelectHtml}
+                            </div>
                         </div>
 
                         <div style="background:var(--bg-body); padding:12px; border-radius:6px; margin-bottom:12px; font-size:13px; line-height:1.6;">
@@ -1616,6 +1621,393 @@ async function saveSectionOrder() {
         } catch (e) {
             console.error("Fehler:", e);
             alert("Verbindungsfehler zum Server.");
+        }
+    }
+
+    const SENDER_INFO = {
+        company: "FabixTech",
+        name: "Patrick Fasel",
+        street: "Waldweg 1",
+        zipCity: "3184 Wünnewil",
+        country: "Schweiz",
+        email: "support@fabixtech.ch",
+        website: "www.fabixtech.ch"
+    };
+
+    async function generateDeliveryNote(orderId) {
+        const token = getSessionToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            const res = await fetch(`/api/delivery-note?id=${encodeURIComponent(orderId)}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                alert("Zugriff verweigert: Keine Admin-Rechte.");
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json();
+                alert("Fehler beim Laden des Lieferscheins: " + (err.error || "Unbekannter Fehler"));
+                return;
+            }
+
+            const data = await res.json();
+            const { order, items, shippingCost, hasOnlyGiftCards, materials } = data;
+
+            let subtotal = 0;
+            const groupedMap = {};
+            (items || []).forEach(i => {
+                const key = (i.product_name || '') + '___' + (i.variant || 'Standard');
+                const qty = Number(i.quantity) || 1;
+                const price = Number(i.price) || 0;
+                if (groupedMap[key]) {
+                    groupedMap[key].quantity += qty;
+                } else {
+                    groupedMap[key] = {
+                        name: i.product_name || 'Produkt',
+                        variant: i.variant || 'Standard',
+                        price: price,
+                        quantity: qty
+                    };
+                }
+            });
+
+            const rowsHtml = Object.values(groupedMap).map(item => {
+                const lineTotal = item.quantity * item.price;
+                subtotal += lineTotal;
+                return `
+                    <tr>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">${item.quantity}x</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">
+                            <strong>${item.name}</strong><br>
+                            <span style="font-size: 12px; color: #64748b;">Variante: ${item.variant}</span>
+                        </td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">CHF ${item.price.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: right;"><strong>CHF ${lineTotal.toFixed(2)}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+
+            const discount = Number(order.discount_amount || 0);
+            const totalAmount = Number(order.total_amount || 0);
+            const orderDate = order.created_at
+                ? new Date(order.created_at).toLocaleDateString('de-CH', { timeZone: 'Europe/Zurich' })
+                : new Date().toLocaleDateString('de-CH');
+
+            const shippingNoteText = hasOnlyGiftCards
+                ? "CHF 0.00 (Digitales Produkt – kein Versand)"
+                : `CHF ${shippingCost.toFixed(2)}`;
+
+            const printWindow = window.open('', '_blank', 'width=900,height=1100');
+            if (!printWindow) {
+                alert("Bitte erlaube Pop-ups für diese Seite, um den Lieferschein zu öffnen.");
+                return;
+            }
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="de">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Lieferschein #${order.id} | ${SENDER_INFO.company}</title>
+                    <style>
+                        @page {
+                            size: A4 portrait;
+                            margin: 18mm 20mm;
+                        }
+
+                        * {
+                            box-sizing: border-box;
+                            margin: 0;
+                            padding: 0;
+                        }
+
+                        body {
+                            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                            color: #0f172a;
+                            font-size: 13px;
+                            line-height: 1.5;
+                            background: #ffffff;
+                        }
+
+                        .a4-page {
+                            max-width: 210mm;
+                            margin: 0 auto;
+                        }
+
+                        .header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            border-bottom: 2px solid #d40202;
+                            padding-bottom: 16px;
+                            margin-bottom: 24px;
+                        }
+
+                        .logo-text {
+                            font-size: 32px;
+                            font-weight: 900;
+                            letter-spacing: -0.5px;
+                            color: #0f172a;
+                        }
+
+                        .logo-text span {
+                            color: #d40202;
+                        }
+
+                        .sender-block {
+                            text-align: right;
+                            font-size: 12px;
+                            color: #475569;
+                        }
+
+                        .address-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 28px;
+                            gap: 20px;
+                        }
+
+                        .customer-box {
+                            flex: 1;
+                        }
+
+                        .sender-mini {
+                            font-size: 10px;
+                            color: #64748b;
+                            text-decoration: underline;
+                            margin-bottom: 6px;
+                        }
+
+                        .meta-box {
+                            background: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                            padding: 12px 16px;
+                            min-width: 230px;
+                            font-size: 12px;
+                        }
+
+                        .meta-box div {
+                            margin-bottom: 4px;
+                        }
+
+                        h1 {
+                            font-size: 20px;
+                            margin-bottom: 12px;
+                            color: #0f172a;
+                        }
+
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 18px;
+                        }
+
+                        th {
+                            background: #f1f5f9;
+                            text-align: left;
+                            padding: 10px 8px;
+                            font-size: 12px;
+                            text-transform: uppercase;
+                            color: #334155;
+                            border-bottom: 2px solid #cbd5e1;
+                        }
+
+                        .totals-box {
+                            width: 320px;
+                            margin-left: auto;
+                            margin-bottom: 28px;
+                            font-size: 13px;
+                        }
+
+                        .totals-row {
+                            display: flex;
+                            justify-content: space-between;
+                            padding: 4px 0;
+                        }
+
+                        .totals-row.final {
+                            border-top: 2px solid #0f172a;
+                            margin-top: 6px;
+                            padding-top: 8px;
+                            font-size: 15px;
+                            font-weight: bold;
+                            color: #d40202;
+                        }
+
+                        .info-boxes {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                            margin-top: 20px;
+                            page-break-inside: avoid;
+                        }
+
+                        .notice-box {
+                            border: 1px solid #cbd5e1;
+                            background: #f8fafc;
+                            border-radius: 8px;
+                            padding: 12px 14px;
+                            font-size: 12px;
+                        }
+
+                        .warning-box {
+                            border: 1.5px solid #d40202;
+                            background: #fef2f2;
+                            border-radius: 8px;
+                            padding: 12px 14px;
+                            font-size: 12px;
+                            color: #7f1d1d;
+                        }
+
+                        .footer-thanks {
+                            margin-top: 28px;
+                            text-align: center;
+                            font-size: 12px;
+                            color: #64748b;
+                        }
+
+                        .no-print {
+                            margin-bottom: 20px;
+                            padding: 12px;
+                            background: #0f172a;
+                            color: white;
+                            text-align: center;
+                            border-radius: 8px;
+                        }
+
+                        .no-print button {
+                            background: #d40202;
+                            color: white;
+                            border: none;
+                            padding: 8px 18px;
+                            border-radius: 6px;
+                            font-weight: bold;
+                            cursor: pointer;
+                            font-size: 14px;
+                        }
+
+                        @media print {
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="a4-page">
+                        <div class="no-print">
+                            <button onclick="window.print()">Als PDF speichern</button>
+                        </div>
+
+                        <div class="header">
+                            <div>
+                                <div class="logo-text">Fabix<span>Tech</span></div>
+                                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">3D-Druck Online-Shop</div>
+                            </div>
+                            <div class="sender-block">
+                                <strong>${SENDER_INFO.company}</strong><br>
+                                ${SENDER_INFO.name}<br>
+                                ${SENDER_INFO.street}<br>
+                                ${SENDER_INFO.zipCity}, ${SENDER_INFO.country}<br>
+                                ${SENDER_INFO.email} • ${SENDER_INFO.website}
+                            </div>
+                        </div>
+
+                        <div class="address-row">
+                            <div class="customer-box">
+                                <div class="sender-mini">${SENDER_INFO.company} • ${SENDER_INFO.street} • ${SENDER_INFO.zipCity}</div>
+                                <strong style="font-size: 15px;">${order.customer_name || 'Kunde'}</strong><br>
+                                ${(order.shipping_address || 'Keine Adresse hinterlegt').replace(/,\s*/g, '<br>')}<br>
+                                <span style="color: #475569; font-size: 12px; display: inline-block; margin-top: 6px;">
+                                    E-Mail: ${order.customer_email || '-'}
+                                </span>
+                            </div>
+
+                            <div class="meta-box">
+                                <div><strong>Bestellnummer:</strong> #${order.id}</div>
+                                <div><strong>Bestelldatum:</strong> ${orderDate}</div>
+                                <div><strong>Status:</strong> ${order.status || 'Offen'}</div>
+                                ${order.tracking_number ? `<div><strong>Sendungsnr.:</strong> ${order.tracking_number}</div>` : ''}
+                            </div>
+                        </div>
+
+                        <h1>Lieferschein</h1>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 65px;">Menge</th>
+                                    <th>Artikel & Variante</th>
+                                    <th style="width: 110px; text-align: right;">Einzelpreis</th>
+                                    <th style="width: 115px; text-align: right;">Gesamt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+
+                        <div class="totals-box">
+                            <div class="totals-row">
+                                <span>Zwischensumme:</span>
+                                <span>CHF ${subtotal.toFixed(2)}</span>
+                            </div>
+                            ${discount > 0 ? `
+                            <div class="totals-row" style="color: #16a34a;">
+                                <span>Rabatt / Gutschein:</span>
+                                <span>- CHF ${discount.toFixed(2)}</span>
+                            </div>` : ''}
+                            <div class="totals-row">
+                                <span>Versandkosten:</span>
+                                <span>${shippingNoteText}</span>
+                            </div>
+                            <div class="totals-row final">
+                                <span>Gesamttotal:</span>
+                                <span>CHF ${totalAmount.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div class="info-boxes">
+                            <div class="notice-box">
+                                <strong>Material & Pflegehinweise:</strong><br>
+                                3D gedruckt aus <strong>${materials}</strong>. Nicht spülmaschinenfest. Vor direkter, starker Hitze (über 50 °C) und dauerhafter direkter Sonneneinstrahlung schützen, um Verformungen zu vermeiden.
+                            </div>
+
+                            <div class="warning-box">
+                                <strong>Sicherheit & Warnhinweise:</strong><br>
+                                • <strong>Achtung:</strong> Nicht für Kinder unter 3 Jahren geeignet. Enthält verschluckbare Kleinteile (Erstickungsgefahr).<br>
+                                • Nicht Lebensmittelecht. Kontakt mit Lebensmitteln vermeiden.
+                                • Elektronik und Batterien von Feuchtigkeit fernhalten. Batterien gehören nicht in den Hausmüll.
+                                • Bei unsachgemässer Handhabung, Überhitzung oder Überbelastung besteht kein Anspruch auf Garantie oder Ersatz.
+                                • Feine Schichlinien und Oberflächenstrukturen sind normal und stellen keine Mängel dar.
+                            </div>
+                        </div>
+
+                        <div class="footer-thanks">
+                            Vielen Dank für deine Bestellung bei <strong>${SENDER_INFO.company}</strong>!
+                        </div>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 250);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        } catch (err) {
+            console.error("Fehler beim Generieren des Lieferscheins:", err);
+            alert("Verbindungsfehler beim Erstellen des Lieferscheins.");
         }
     }
     </script>
