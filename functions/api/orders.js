@@ -63,7 +63,9 @@ export async function onRequestGet(context) {
             (i.product_name || '').toLowerCase().includes('gift')
         );
 
-        order.shipping_cost = hasOnlyGiftCards ? 0.00 : 5.90;
+        order.shipping_cost = order.shipping_cost !== undefined && order.shipping_cost !== null 
+            ? Number(order.shipping_cost) 
+            : (hasOnlyGiftCards ? 0.00 : 5.90);
     }
 
     return new Response(JSON.stringify(orders), {

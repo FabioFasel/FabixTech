@@ -33,6 +33,7 @@ export async function onRequestGet(context) {
         gesamtBetrag = Number(order.total_amount).toFixed(2);
         rabattWert = Number(order.discount_amount || 0);
         promoCode = order.promo_code || 'Keiner';
+        shippingCost = order.shipping_cost !== undefined && order.shipping_cost !== null ? Number(order.shipping_cost) : 5.90;
 
         const orderItems = await context.env.DB.prepare("SELECT * FROM order_items WHERE order_id = ?").bind(freeOrderId).all();
         items = (orderItems.results || []).map(i => ({
@@ -42,9 +43,6 @@ export async function onRequestGet(context) {
             quantity: i.quantity,
             price: i.price
         }));
-
-        const isOnlyDigital = items.every(i => (i.name || '').toLowerCase().includes('gutschein') || (i.name || '').toLowerCase().includes('gift'));
-        shippingCost = isOnlyDigital ? 0.00 : 5.90;
 
         const gcResults = await context.env.DB.prepare(
             "SELECT code, initial_balance as value FROM gift_cards WHERE order_id = ?"
@@ -81,7 +79,7 @@ export async function onRequestGet(context) {
         }
 
         const isOnlyDigital = items.every(i => i.isGiftCard || (i.name || '').toLowerCase().includes('gutschein') || (i.name || '').toLowerCase().includes('gift'));
-        shippingCost = isOnlyDigital ? 0.00 : 5.90;
+        shippingCost = paymentIntent.metadata?.shipping_cost !== undefined ? parseFloat(paymentIntent.metadata.shipping_cost) : (isOnlyDigital ? 0.00 : 5.90);
 
         const existingOrder = await context.env.DB.prepare(
             "SELECT id FROM orders WHERE payment_intent_id = ?"
@@ -97,8 +95,8 @@ export async function onRequestGet(context) {
             const shippingNote = paymentIntent.metadata?.shipping_note || '';
 
             await context.env.DB.prepare(`
-                INSERT INTO orders (id, payment_intent_id, customer_name, customer_email, shipping_address, shipping_note, total_amount, discount_amount, promo_code, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO orders (id, payment_intent_id, customer_name, customer_email, shipping_address, shipping_note, total_amount, discount_amount, promo_code, shipping_cost, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
                 orderId,
                 paymentIntentId,
@@ -109,6 +107,7 @@ export async function onRequestGet(context) {
                 parseFloat(gesamtBetrag),
                 rabattWert,
                 promoCode,
+                shippingCost,
                 isOnlyDigital ? 'Digital abgeschlossen' : 'offen'
             ).run();
 
@@ -285,7 +284,7 @@ export async function onRequestGet(context) {
         `;
 
         if (kundeEmail && kundeEmail !== 'Keine E-Mail') {
-            const emailResponse = await context.env.EMAIL_SERVICE.fetch(new Request("https://internal/send", {
+            await context.env.EMAIL_SERVICE.fetch(new Request("https://internal/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -294,11 +293,6 @@ export async function onRequestGet(context) {
                     htmlContent: htmlContent
                 })
             }));
-
-            const emailResult = await emailResponse.json();
-            if (emailResult.status !== "success") {
-                throw new Error(emailResult.message || "Fehler beim E-Mail-Versand über den Worker");
-            }
         }
     } catch (e) {
         console.error("E-Mail-Versand fehlgeschlagen:", e);
@@ -528,71 +522,6 @@ export async function onRequestGet(context) {
                 font-size: 11px; 
                 color: var(--text-muted); 
                 margin-top: 4px; 
-            }
-
-            @media print {
-                body { 
-                    background: #ffffff !important; 
-                    color: #000000 !important; 
-                    display: block !important; 
-                    padding: 0 !important; 
-                    margin: 0 !important; 
-                    height: auto !important; 
-                    min-height: 0 !important; 
-                }
-
-                html { 
-                    height: auto !important; 
-                    min-height: 0 !important;
-                }
-
-                .card { 
-                    box-shadow: none !important; 
-                    border: none !important; 
-                    width: 100% !important; 
-                    max-width: 100% !important; 
-                    padding: 0 !important; 
-                    margin: 0 !important; 
-                    background: transparent !important; 
-                }
-
-                .no-print, .icon, h1, p, .btn, .item, .item-price, button { 
-                    display: none !important; 
-                }
-
-                .gift-card-box { 
-                        border: 2px solid #000000 !important; 
-                        background: #ffffff !important; 
-                        color: #000000 !important; 
-                        width: 100% !important; 
-                        max-width: 450px !important;
-                        margin: 0 auto !important; 
-                        padding: 25px !important; 
-                        page-break-after: avoid !important;
-                        page-break-before: avoid !important;
-                        page-break-inside: avoid !important;
-                        break-after: avoid !important;
-                        break-before: avoid !important;
-                        break-inside: avoid !important;
-                }
-                .gift-card-brand {
-                    color: #000000 !important;
-                    font-size: 24px !important;
-                }
-                
-                .gift-card-code-wrapper {
-                    border: 2px dashed #000000 !important; 
-                    background: #f8fafc !important; 
-                }
-
-                .gift-card-code { 
-                    color: #000000 !important; 
-                    font-size: 22px !important; 
-                }
-                @page {
-                    margin: 10mm; 
-                    size: auto; 
-                }
             }
         </style>
     </head>

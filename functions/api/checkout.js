@@ -37,10 +37,6 @@ export async function onRequestPost(context) {
             if (user && user.email) customerEmail = user.email;
         }
 
-        try {
-            await context.env.DB.prepare("ALTER TABLE gift_cards ADD COLUMN order_id TEXT").run();
-        } catch (e) {}
-
         const ignoreStock = await isStockIgnored(context.env);
 
         if (action === 'confirm_free_order') {
@@ -135,8 +131,8 @@ export async function onRequestPost(context) {
             const promoString = appliedCodesList.length > 0 ? appliedCodesList.join(', ') : 'Keiner';
             
             await context.env.DB.prepare(`
-                INSERT INTO orders (id, customer_name, customer_email, shipping_address, total_amount, discount_amount, promo_code, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'offen')
+                INSERT INTO orders (id, customer_name, customer_email, shipping_address, total_amount, discount_amount, promo_code, shipping_cost, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'offen')
             `).bind(
                 orderId,
                 `${shippingAddress.firstname} ${shippingAddress.lastname}`,
@@ -144,7 +140,8 @@ export async function onRequestPost(context) {
                 fullAddressStr,
                 finalTotal,
                 verifiedDiscount,
-                promoString
+                promoString,
+                shippingCost
             ).run();
 
             for (const gcUsed of giftCardsToDeduct) {
@@ -330,7 +327,8 @@ export async function onRequestPost(context) {
             customer_email: customerEmail,
             shipping_address: formattedAddress,
             shipping_note: shippingAddress?.shipping_note || '',
-            isOnlyDigital: hasOnlyGiftCards ? 'true' : 'false'
+            isOnlyDigital: hasOnlyGiftCards ? 'true' : 'false',
+            shipping_cost: (versandkostenRappen / 100).toFixed(2)
         };
 
         verifiedCart.forEach((item, index) => {
